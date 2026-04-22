@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=11" />
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -25,17 +25,30 @@
     <style>#pre-bar{animation:slide 1.2s ease-in-out infinite}@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(550%)}}</style>
   </div>
   <div id="root"></div>
-  <div id="err-overlay" style="display:none;position:fixed;inset:0;background:#1a1a2e;color:#ff6b6b;font-family:monospace;padding:24px;overflow:auto;z-index:9999;white-space:pre-wrap"></div>
+
+  <!-- Non-fatal error banner — shows at bottom, auto-hides after 6s, never blocks the app -->
+  <div id="err-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e1e2e;color:#ff8080;font-family:monospace;font-size:12px;padding:10px 18px;border-radius:8px;border:1px solid #ff4444;z-index:9999;max-width:600px;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:flex-start;gap:10px;">
+    <span style="flex:1;white-space:pre-wrap;word-break:break-word" id="err-msg"></span>
+    <button onclick="this.parentElement.style.display='none'" style="background:none;border:none;color:#ff8080;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">✕</button>
+  </div>
 
   <script>
+    var _errTimer;
     window.onerror = function(msg, src, line, col, err) {
-      var el = document.getElementById('err-overlay');
-      el.style.display = 'block';
-      el.textContent = 'JavaScript Error:\n' + msg + '\n\nFile: ' + src + '\nLine: ' + line + ', Col: ' + col + (err ? '\n\nStack:\n' + err.stack : '');
+      // Skip noise errors that don't affect the user
+      var skip = ['ResizeObserver', 'Script error', 'getBoundingClientRect'];
+      if (skip.some(function(s){ return String(msg).indexOf(s) > -1; })) return;
+      var banner = document.getElementById('err-banner');
+      var msgEl  = document.getElementById('err-msg');
+      if (!banner || !msgEl) return;
+      msgEl.textContent = '⚠ ' + msg + (line ? '  (line ' + line + ')' : '');
+      banner.style.display = 'flex';
+      clearTimeout(_errTimer);
+      _errTimer = setTimeout(function(){ banner.style.display = 'none'; }, 6000);
     };
   </script>
 
-  <script src="data.js?v=8"></script>
-  <script type="text/babel" data-presets="react" src="app.jsx?v=8"></script>
+  <script src="data.js?v=11"></script>
+  <script type="text/babel" data-presets="react" src="app.jsx?v=11"></script>
 </body>
 </html>

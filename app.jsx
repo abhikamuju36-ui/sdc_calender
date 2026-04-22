@@ -1976,11 +1976,15 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
   },[userEvents]);
 
   // Feature 2: Hover card helpers
+  // FIX: capture rect synchronously — React nullifies e.currentTarget after
+  // the handler returns, so calling getBoundingClientRect inside setTimeout
+  // always throws "Cannot read properties of null".
   const showHover=useCallback((ev, domEvent)=>{
     clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current=setTimeout(()=>{
-      setHoverCard({event:ev,rect:domEvent.currentTarget.getBoundingClientRect()});
-    },400);
+    let rect;
+    try { rect = domEvent.currentTarget ? domEvent.currentTarget.getBoundingClientRect() : null; } catch(e) { return; }
+    if(!rect) return;
+    hoverTimerRef.current=setTimeout(()=>{ setHoverCard({event:ev, rect}); }, 400);
   },[]);
   const hideHover=useCallback(()=>{
     clearTimeout(hoverTimerRef.current);
@@ -2030,11 +2034,17 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
     const rs=new Date(viewDate.getFullYear()-1,0,1);
     const re=new Date(viewDate.getFullYear()+2,11,31);
     const expandedUser=expandAll(userEvents,rs,re);
-    // Smartsheet events are already flat (no recurrence) — filter to visible date range
-    const ssVisible=ssEvents.filter(e=>{
-      const d=new Date(e.date);
-      return d>=rs && d<=re;
-    });
+    // Smartsheet events: normalize date strings → Date objects.
+    // endDate is intentionally set to null — SS tasks often span months and would
+    // render as stacked full-width banners across every row. Show as chips on
+    // start date only; full date range is visible in the event detail panel.
+    const ssVisible=ssEvents
+      .filter(e=>{ const d=new Date(e.date); return d>=rs && d<=re; })
+      .map(e=>({
+        ...e,
+        date:    new Date(e.date),
+        endDate: null,   // prevents multi-day banner rendering
+      }));
     if(myEventsOnly) return [...expandedUser.filter(e=>!e.seeded), ...ssVisible];
     return [...seeded,...expandedUser,...ssVisible];
   },[seeded,userEvents,ssEvents,viewDate.getFullYear(),myEventsOnly]);
