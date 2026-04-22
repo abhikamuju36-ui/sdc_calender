@@ -415,6 +415,8 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
   const nowRef=useRef(null);
   const [nowTop, setNowTop]=useState(()=>{ const n=new Date(); return (n.getHours()*60+n.getMinutes())/60*HOUR_H; });
   const draggedEventId=useRef(null);
+  const [allDayExpanded, setAllDayExpanded]=useState(false);
+  const MAX_ALLDAY=3;
 
   useEffect(()=>{
     const tick=()=>{ const n=new Date(); setNowTop((n.getHours()*60+n.getMinutes())/60*HOUR_H); };
@@ -438,27 +440,44 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
     return m;
   },[filtered, days]);
 
+  const maxAllDayCount=useMemo(()=>Math.max(0,...[...byDay.values()].map(s=>s.allDay.length)),[byDay]);
   const hours=Array.from({length:24},(_,i)=>i);
 
   return (
     <div className="time-grid-wrap">
       {/* All-day row */}
-      <div className="tg-allday-row">
-        <div className="tg-time-col tg-allday-label">All day</div>
+      <div className={`tg-allday-row${allDayExpanded?' expanded':''}`}>
+        <div className="tg-time-col tg-allday-label">
+          <span>All day</span>
+          {maxAllDayCount>MAX_ALLDAY&&(
+            <button className="tg-allday-toggle" onClick={()=>setAllDayExpanded(e=>!e)} title={allDayExpanded?'Collapse':'Expand all-day events'}>
+              {allDayExpanded?'▲':'▼'}
+            </button>
+          )}
+        </div>
         {days.map((d,di)=>{
           const slot=byDay.get(ymd(d))||{allDay:[],timed:[]};
           const isToday=isSameDay(d,today);
+          const visible=allDayExpanded?slot.allDay:slot.allDay.slice(0,MAX_ALLDAY);
+          const hiddenCount=slot.allDay.length-MAX_ALLDAY;
           return (
             <div key={di} className={`tg-allday-cell ${isToday?'today':''}`}>
-              {slot.allDay.map(ev=>{
+              {visible.map(ev=>{
                 const cat=CATMAP[ev.category];
                 const fg=ev.color||cat.sw, bg=ev.color?(ev.color+'22'):cat.swBg;
+                const ssColor=ev.source==='smartsheet'&&ev.pctComplete?ssPctColor(ev.pctComplete):null;
                 return (
                   <div key={ev.id} className="chip" style={{'--chip-fg':fg,'--chip-bg':bg}} onClick={()=>onOpenEvent(ev)} onMouseEnter={(e)=>onHover&&onHover(ev,e)} onMouseLeave={()=>onHoverEnd&&onHoverEnd()} title={ev.title}>
+                    {ev.source==='smartsheet'&&<span className="ss-badge" title={ev.sheetName||'Smartsheet'}>SS</span>}
+                    {ev.source==='smartsheet'&&getJobNum(ev.sheetName)&&<span className="ss-job-num" title={ev.sheetName}>{getJobNum(ev.sheetName)}</span>}
                     <span className="ttl">{ev.title}</span>
+                    {ev.pctComplete&&ev.source==='smartsheet'&&<span className="ss-pct" style={ssColor?{color:ssColor}:{}}>{ev.pctComplete}</span>}
                   </div>
                 );
               })}
+              {!allDayExpanded&&hiddenCount>0&&(
+                <div className="tg-allday-more" onClick={()=>setAllDayExpanded(true)}>+{hiddenCount} more</div>
+              )}
             </div>
           );
         })}

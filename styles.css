@@ -243,7 +243,11 @@ a { color:var(--accent); }
 
 .tg-header-row { display:flex; border-bottom:2px solid var(--line); background:var(--bg); flex-shrink:0; }
 .tg-time-col { width:56px; flex-shrink:0; font-size:11px; color:var(--ink-3); }
-.tg-allday-label { display:flex; align-items:center; justify-content:flex-end; padding:6px 8px 6px 0; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; border-right:1px solid var(--line); }
+.tg-allday-label { display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-start; padding:6px 6px 6px 0; gap:4px; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; border-right:1px solid var(--line); }
+.tg-allday-toggle { background:none; border:1px solid var(--line); border-radius:3px; color:var(--ink-3); font-size:9px; cursor:pointer; padding:1px 4px; line-height:1.4; }
+.tg-allday-toggle:hover { background:var(--line); color:var(--ink); }
+.tg-allday-more { font-size:11px; color:var(--accent); cursor:pointer; padding:1px 2px; font-weight:500; }
+.tg-allday-more:hover { text-decoration:underline; }
 .tg-day-head { flex:1; display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-right:1px solid var(--line); gap:2px; }
 .tg-day-head:last-child { border-right:0; }
 .tg-day-head.today { background:var(--accent-soft); }
@@ -252,7 +256,8 @@ a { color:var(--accent); }
 .tg-dnum.today { background:var(--accent); color:#fff; }
 .tg-month { font-size:10px; color:var(--ink-3); }
 
-.tg-allday-row { display:flex; border-bottom:1px solid var(--line); flex-shrink:0; min-height:28px; }
+.tg-allday-row { display:flex; border-bottom:1px solid var(--line); flex-shrink:0; min-height:28px; max-height:120px; overflow:hidden; transition:max-height 0.2s ease; }
+.tg-allday-row.expanded { max-height:400px; overflow-y:auto; }
 .tg-allday-cell { flex:1; padding:3px 4px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:2px; }
 .tg-allday-cell:last-child { border-right:0; }
 .tg-allday-cell.today { background:rgba(0,102,204,.04); }
