@@ -415,8 +415,9 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
   const nowRef=useRef(null);
   const [nowTop, setNowTop]=useState(()=>{ const n=new Date(); return (n.getHours()*60+n.getMinutes())/60*HOUR_H; });
   const draggedEventId=useRef(null);
-  const [allDayExpanded, setAllDayExpanded]=useState(false);
-  const MAX_ALLDAY=3;
+  const [expandedGroups, setExpandedGroups]=useState(new Set());
+  const MAX_CAL=2;
+  const MAX_GROUPS=3;
 
   useEffect(()=>{
     const tick=()=>{ const n=new Date(); setNowTop((n.getHours()*60+n.getMinutes())/60*HOUR_H); };
@@ -440,53 +441,95 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
     return m;
   },[filtered, days]);
 
-  const maxAllDayCount=useMemo(()=>Math.max(0,...[...byDay.values()].map(s=>s.allDay.length)),[byDay]);
+  const hasTimedEvents=useMemo(()=>[...byDay.values()].some(s=>s.timed.length>0),[byDay]);
+  const hasAnySSEvents=useMemo(()=>[...byDay.values()].some(s=>s.allDay.some(e=>e.source==='smartsheet')),[byDay]);
   const hours=Array.from({length:24},(_,i)=>i);
+
+  const toggleGroup=(key)=>setExpandedGroups(prev=>{ const n=new Set(prev); n.has(key)?n.delete(key):n.add(key); return n; });
 
   return (
     <div className="time-grid-wrap">
-      {/* All-day row */}
-      <div className={`tg-allday-row${allDayExpanded?' expanded':''}`}>
-        <div className="tg-time-col tg-allday-label">
-          <span>All day</span>
-          {maxAllDayCount>MAX_ALLDAY&&(
-            <button className="tg-allday-toggle" onClick={()=>setAllDayExpanded(e=>!e)} title={allDayExpanded?'Collapse':'Expand all-day events'}>
-              {allDayExpanded?'▲':'▼'}
-            </button>
-          )}
+      {/* ── Zone 1: Calendar events (birthdays, holidays, personal) ── */}
+      <div className="tg-allday-row tg-zone-row">
+        <div className="tg-time-col tg-zone-label-col">
+          <span>Events</span>
         </div>
         {days.map((d,di)=>{
           const slot=byDay.get(ymd(d))||{allDay:[],timed:[]};
           const isToday=isSameDay(d,today);
-          const visible=allDayExpanded?slot.allDay:slot.allDay.slice(0,MAX_ALLDAY);
-          const hiddenCount=slot.allDay.length-MAX_ALLDAY;
+          const calEvs=slot.allDay.filter(e=>e.source!=='smartsheet');
+          const visible=calEvs.slice(0,MAX_CAL);
+          const hidden=calEvs.length-MAX_CAL;
           return (
-            <div key={di} className={`tg-allday-cell ${isToday?'today':''}`}>
+            <div key={di} className={`tg-allday-cell tg-events-cell ${isToday?'today':''}`}>
               {visible.map(ev=>{
                 const cat=CATMAP[ev.category];
                 const fg=ev.color||cat.sw, bg=ev.color?(ev.color+'22'):cat.swBg;
-                const ssColor=ev.source==='smartsheet'&&ev.pctComplete?ssPctColor(ev.pctComplete):null;
                 return (
                   <div key={ev.id} className="chip" style={{'--chip-fg':fg,'--chip-bg':bg}} onClick={()=>onOpenEvent(ev)} onMouseEnter={(e)=>onHover&&onHover(ev,e)} onMouseLeave={()=>onHoverEnd&&onHoverEnd()} title={ev.title}>
-                    {ev.source==='smartsheet'&&<span className="ss-badge" title={ev.sheetName||'Smartsheet'}>SS</span>}
-                    {ev.source==='smartsheet'&&getJobNum(ev.sheetName)&&<span className="ss-job-num" title={ev.sheetName}>{getJobNum(ev.sheetName)}</span>}
                     <span className="ttl">{ev.title}</span>
-                    {ev.pctComplete&&ev.source==='smartsheet'&&<span className="ss-pct" style={ssColor?{color:ssColor}:{}}>{ev.pctComplete}</span>}
                   </div>
                 );
               })}
-              {!allDayExpanded&&hiddenCount>0&&(
-                <div className="tg-allday-more" onClick={()=>setAllDayExpanded(true)}>+{hiddenCount} more</div>
-              )}
+              {hidden>0&&<div className="tg-allday-more">+{hidden} more</div>}
             </div>
           );
         })}
       </div>
 
-      {/* Scrollable time body */}
+      {/* ── Zone 2: Smartsheet tasks grouped by job number ── */}
+      {hasAnySSEvents&&(
+        <div className="tg-allday-row tg-zone-row tg-tasks-row">
+          <div className="tg-time-col tg-zone-label-col tg-tasks-label-col">
+            <span>Tasks</span>
+          </div>
+          {days.map((d,di)=>{
+            const slot=byDay.get(ymd(d))||{allDay:[],timed:[]};
+            const isToday=isSameDay(d,today);
+            const ssTasks=slot.allDay.filter(e=>e.source==='smartsheet');
+            const groupMap=new Map();
+            ssTasks.forEach(ev=>{ const job=getJobNum(ev.sheetName)||ev.sheetName||'Other'; if(!groupMap.has(job))groupMap.set(job,[]); groupMap.get(job).push(ev); });
+            const groups=[...groupMap.entries()];
+            const visibleGroups=groups.slice(0,MAX_GROUPS);
+            const hiddenGroups=groups.length-MAX_GROUPS;
+            return (
+              <div key={di} className={`tg-allday-cell tg-tasks-cell ${isToday?'today':''}`}>
+                {visibleGroups.map(([job,evs])=>{
+                  const gk=`${ymd(d)}|${job}`;
+                  const expanded=expandedGroups.has(gk);
+                  const avgPct=Math.round(evs.reduce((s,e)=>s+(parseInt(e.pctComplete)||0),0)/evs.length);
+                  const pColor=avgPct>0?ssPctColor(avgPct+'%'):null;
+                  return (
+                    <div key={job} className="tg-task-group">
+                      <div className="tg-task-group-hd" onClick={()=>toggleGroup(gk)} title={`Job ${job} · ${evs.length} task${evs.length!==1?'s':''}`}>
+                        <span className="ss-job-num">{job}</span>
+                        <span className="tg-task-count">{evs.length} task{evs.length!==1?'s':''}</span>
+                        {avgPct>0&&<span className="ss-pct tg-group-pct" style={pColor?{color:pColor}:{}}>{avgPct}%</span>}
+                        <span className="tg-group-chevron">{expanded?'▲':'▼'}</span>
+                      </div>
+                      {expanded&&evs.map(ev=>{
+                        const cat=CATMAP[ev.category];
+                        const pColor2=ev.pctComplete?ssPctColor(ev.pctComplete):null;
+                        return (
+                          <div key={ev.id} className="chip tg-task-chip" style={{'--chip-fg':cat.sw,'--chip-bg':cat.swBg}} onClick={()=>onOpenEvent(ev)} title={ev.title}>
+                            <span className="ttl">{ev.title}</span>
+                            {ev.pctComplete&&<span className="ss-pct" style={pColor2?{color:pColor2}:{}}>{ev.pctComplete}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+                {hiddenGroups>0&&<div className="tg-allday-more">+{hiddenGroups} more jobs</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Time grid ── */}
       <div className="tg-body">
         <div className="tg-inner" style={{height:`${HOUR_H*24}px`}}>
-          {/* Hour lines + labels */}
           <div className="tg-time-col">
             {hours.map(h=>(
               <div key={h} className="tg-hour-label" style={{top:`${h*HOUR_H}px`}}>
@@ -495,7 +538,6 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
             ))}
           </div>
 
-          {/* Day columns */}
           {days.map((d,di)=>{
             const slot=byDay.get(ymd(d))||{allDay:[],timed:[]};
             const isToday=isSameDay(d,today);
@@ -519,10 +561,8 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
                   draggedEventId.current=null;
                 }}
               >
-                {/* Hour grid lines */}
                 {hours.map(h=><div key={h} className="tg-hour-line" style={{top:`${h*HOUR_H}px`}}/>)}
 
-                {/* Timed events */}
                 {laid.map(ev=>{
                   const cat=CATMAP[ev.category];
                   const fg=ev.color||cat.sw, bg=ev.color?(ev.color+'22'):cat.swBg;
@@ -532,28 +572,26 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
                   const w=`${100/ev._totalCols}%`;
                   const l=`${ev._col/ev._totalCols*100}%`;
                   return (
-                    <div
-                      key={ev.id}
-                      className="tg-event"
-                      style={{top:`${top}px`,height:`${h}px`,left:l,width:w,'--chip-fg':fg,'--chip-bg':bg}}
-                      draggable={!ev.seeded}
-                      onDragStart={()=>{ draggedEventId.current=ev.id; }}
-                      onClick={(e)=>{ e.stopPropagation(); onOpenEvent(ev); }}
-                      onMouseEnter={(e)=>onHover&&onHover(ev,e)}
-                      onMouseLeave={()=>onHoverEnd&&onHoverEnd()}
-                      title={ev.title}
-                    >
+                    <div key={ev.id} className="tg-event" style={{top:`${top}px`,height:`${h}px`,left:l,width:w,'--chip-fg':fg,'--chip-bg':bg}} draggable={!ev.seeded} onDragStart={()=>{ draggedEventId.current=ev.id; }} onClick={(e)=>{ e.stopPropagation(); onOpenEvent(ev); }} onMouseEnter={(e)=>onHover&&onHover(ev,e)} onMouseLeave={()=>onHoverEnd&&onHoverEnd()} title={ev.title}>
                       <div className="tg-event-title">{ev.title}{ev.notify&&<span title={`Reminder: ${ev.notify} min before`} style={{fontSize:9,opacity:0.7,marginLeft:3}}>🔔</span>}</div>
                       {h>30&&<div className="tg-event-time">{fmtTime(ev.time,timezone)}{ev.endTime?` – ${fmtTime(ev.endTime,timezone)}`:''}</div>}
                     </div>
                   );
                 })}
 
-                {/* Current time indicator */}
                 {isToday&&<div ref={nowRef} className="tg-now-line" style={{top:`${nowTop}px`}}><div className="tg-now-dot"/></div>}
               </div>
             );
           })}
+
+          {/* Empty time grid hint — shown once, centred at 9 AM */}
+          {!hasTimedEvents&&(
+            <div style={{position:'absolute',top:`${9*HOUR_H}px`,left:'56px',right:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none',zIndex:0}}>
+              <span style={{fontSize:12,color:'var(--ink-3)',opacity:0.45,background:'var(--bg-elev)',padding:'4px 12px',borderRadius:20,border:'1px dashed var(--line)'}}>
+                No timed events — click any slot to schedule one
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
