@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Environment — contains secrets, NEVER commit
+server/.env
+
+# NeDB data files — runtime data, not source
+server/users.db
+server/roles.db
+
+# Uploads — user-generated content
+uploads/
+
+# Napkin sketches / scraps
+scraps/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.vscode/

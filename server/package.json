@@ -1,0 +1,18 @@
+{
+  "name": "sdc-calendar-server",
+  "version": "1.0.0",
+  "description": "SDC Centralized Calendar backend with Microsoft SSO",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^2.6.4",
+    "@seald-io/nedb": "^4.0.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3",
+    "express-session": "^1.18.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
