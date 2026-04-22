@@ -73,6 +73,36 @@ router.use((req, res, next) => {
   next();
 });
 
+// ── POST /api/smartsheet/verify-token ────────────────────────
+// Electron desktop app calls this when the user enters their token.
+// Step 1: token must match SMARTSHEET_API_TOKEN in server .env
+// Step 2: token must actually work against the Smartsheet API
+// Returns { valid, name?, email?, error? }
+router.post('/verify-token', async (req, res) => {
+  const { token } = req.body;
+  if (!token || typeof token !== 'string') {
+    return res.json({ valid: false, error: 'No token provided' });
+  }
+
+  const serverToken = (process.env.SMARTSHEET_API_TOKEN || '').trim();
+  if (!serverToken) {
+    return res.json({ valid: false, error: 'Smartsheet is not configured on this server' });
+  }
+
+  if (token.trim() !== serverToken) {
+    return res.json({ valid: false, error: 'Token does not match — contact your administrator' });
+  }
+
+  // Token matches — now verify it actually works against Smartsheet API
+  try {
+    const user = await ssGet('/users/me');
+    if (user.errorCode) return res.json({ valid: false, error: user.message });
+    res.json({ valid: true, name: user.name, email: user.email });
+  } catch (e) {
+    res.json({ valid: false, error: 'Could not reach Smartsheet API: ' + e.message });
+  }
+});
+
 // ── GET /api/smartsheet/status ────────────────────────────────
 router.get('/status', async (req, res) => {
   try {

@@ -1,4 +1,5 @@
 // SDC Centralized Calendar — app.jsx v3
+const APP_VERSION = '1.2.3';
 
 const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
@@ -1456,7 +1457,7 @@ function BirthdaySpotlight({ birthdays }) {
   );
 }
 
-function Sidebar({ viewDate, setViewDate, allEvents, activeCats, setActiveCats, search, setSearch, onNewEvent, onOpenEvent, weekStart, onOpenDirectory, onOpenImportExport, onUndo, onRedo, canUndo, canRedo, myEventsOnly, setMyEventsOnly, authUser, onSignOut }) {
+function Sidebar({ viewDate, setViewDate, allEvents, activeCats, setActiveCats, search, setSearch, onNewEvent, onOpenEvent, weekStart, onOpenDirectory, onOpenImportExport, onUndo, onRedo, canUndo, canRedo, myEventsOnly, setMyEventsOnly, authUser, onSignOut, appVersion }) {
   const [collapsed, setCollapsed]=useState({mini:false,cats:false,upcoming:false});
 
   const eventsByDay=useMemo(()=>{
@@ -1499,7 +1500,7 @@ function Sidebar({ viewDate, setViewDate, allEvents, activeCats, setActiveCats, 
         <img src="assets/sdc-logo.png" alt="SDC" className="brand-logo"/>
         <div>
           <div className="brand-title">Centralized Calendar</div>
-          <div className="brand-sub">SDC Automation · {new Date().getFullYear()}</div>
+          <div className="brand-sub">SDC Automation · {new Date().getFullYear()} <span className="brand-version">v{appVersion||APP_VERSION}</span></div>
         </div>
       </div>
       <div className="sidebar-inner">
@@ -1838,19 +1839,38 @@ function AdminPanel({ authToken, onClose }) {
 
 // ─── Smartsheet Panel ─────────────────────────────────────────
 function SmartsheetPanel({ onClose, onSync, currentEvents }) {
-  const [status,   setStatus]   = useState(null);    // null | { connected, name, email, error }
+  const isElectron = !!(window.electronAPI);
+
+  // ── Token gate (Electron only) ────────────────────────────
+  const [tokenInput,     setTokenInput]     = useState('');
+  const [tokenVerified,  setTokenVerified]  = useState(!isElectron); // web: auto-pass
+  const [tokenVerifying, setTokenVerifying] = useState(false);
+  const [tokenError,     setTokenError]     = useState(null);
+  const [connectedUser,  setConnectedUser]  = useState(null);
+
+  // ── Sync state ────────────────────────────────────────────
+  const [status,   setStatus]   = useState(null);
   const [sheets,   setSheets]   = useState([]);
   const [selected, setSelected] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('sdc_ss_selected') || '[]')); }
     catch { return new Set(); }
   });
-  const [syncing,  setSyncing]  = useState(false);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState(null);
   const lastSync = localStorage.getItem('sdc_ss_last_sync');
 
-  // Load status + sheet list on open
+  // On mount: if Electron, try to restore a previously saved token
   useEffect(() => {
+    if (!isElectron) return;
+    window.electronAPI.getSSToken().then(saved => {
+      if (saved) verifyToken(saved, true);
+    });
+  }, []);
+
+  // Load status + sheet list — only after token is verified
+  useEffect(() => {
+    if (!tokenVerified) return;
     setLoading(true);
     Promise.all([
       fetch(`${API_URL}/api/smartsheet/status`).then(r => r.json()).catch(() => ({ connected: false, error: 'Server offline — start node server.js' })),
@@ -1860,54 +1880,131 @@ function SmartsheetPanel({ onClose, onSync, currentEvents }) {
       setSheets(Array.isArray(sh) ? sh : []);
       setLoading(false);
     });
-  }, []);
+  }, [tokenVerified]);
 
-  const toggleSheet = (id) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      localStorage.setItem('sdc_ss_selected', JSON.stringify([...next]));
-      return next;
-    });
+  // ── Token verification ────────────────────────────────────
+  const verifyToken = async (token, silent = false) => {
+    if (!silent) setTokenVerifying(true);
+    setTokenError(null);
+    try {
+      const res  = await fetch(`${API_URL}/api/smartsheet/verify-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setTokenVerified(true);
+        setConnectedUser({ name: data.name, email: data.email });
+        if (!silent) await window.electronAPI.saveSSToken(token);
+      } else {
+        setTokenError(data.error || 'Invalid token');
+        if (silent) await window.electronAPI.clearSSToken(); // stored token expired
+      }
+    } catch {
+      if (!silent) setTokenError('Could not reach server — is it running?');
+    } finally {
+      if (!silent) setTokenVerifying(false);
+    }
   };
 
+  const disconnect = async () => {
+    if (isElectron) await window.electronAPI.clearSSToken();
+    setTokenVerified(false);
+    setConnectedUser(null);
+    setTokenInput('');
+    setTokenError(null);
+    setStatus(null);
+    setSheets([]);
+    onSync([]);
+    localStorage.removeItem('sdc_ss_last_sync');
+  };
+
+  // ── Sync helpers ──────────────────────────────────────────
+  const toggleSheet = (id) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    localStorage.setItem('sdc_ss_selected', JSON.stringify([...next]));
+    return next;
+  });
   const selectAll  = () => { const s = new Set(sheets.map(sh => String(sh.id))); setSelected(s); localStorage.setItem('sdc_ss_selected', JSON.stringify([...s])); };
   const selectNone = () => { setSelected(new Set()); localStorage.setItem('sdc_ss_selected', '[]'); };
 
   const doSync = async () => {
     if (!selected.size) return;
-    setSyncing(true);
-    setError(null);
+    setSyncing(true); setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/smartsheet/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetIds: [...selected] }),
-      });
+      const res  = await fetch(`${API_URL}/api/smartsheet/sync`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheetIds:[...selected] }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       onSync(data);
       localStorage.setItem('sdc_ss_last_sync', new Date().toLocaleString());
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSyncing(false);
-    }
+    } catch (e) { setError(e.message); }
+    finally     { setSyncing(false); }
   };
 
   const clearAll = () => { onSync([]); localStorage.removeItem('sdc_ss_last_sync'); };
+  const fmtDate  = (iso) => { if (!iso) return null; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); };
 
-  const fmtDate = (iso) => {
-    if (!iso) return null;
-    const d = new Date(iso);
-    return isNaN(d) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  // ── TOKEN GATE SCREEN (Electron, not yet verified) ────────
+  if (isElectron && !tokenVerified) {
+    return (
+      <div className="scrim" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="modal ss-connect-modal">
+          <div className="modal-head">
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:22 }}>📊</span>
+              <h2 style={{ margin:0 }}>Connect Smartsheet</h2>
+            </div>
+            <button className="iconbtn" onClick={onClose}>{Icon.x}</button>
+          </div>
 
+          <div className="modal-body ss-connect-body">
+            <div className="ss-connect-icon">🔑</div>
+            <p className="ss-connect-desc">
+              Enter the Smartsheet access token provided by your administrator to link your project tasks to the calendar.
+            </p>
+            <div className="ss-connect-field">
+              <label className="ss-connect-label">ACCESS TOKEN</label>
+              <input
+                type="password"
+                className="input ss-token-input"
+                placeholder="Paste your token here…"
+                value={tokenInput}
+                autoFocus
+                onChange={e => { setTokenInput(e.target.value); setTokenError(null); }}
+                onKeyDown={e => e.key === 'Enter' && tokenInput.trim() && verifyToken(tokenInput.trim())}
+              />
+              {tokenError && <div className="ss-token-error">❌ {tokenError}</div>}
+            </div>
+            <p className="ss-connect-hint">
+              Your token is encrypted and stored securely on this machine using OS-level encryption.
+              It is never sent anywhere except your company's calendar server.
+            </p>
+          </div>
+
+          <div className="modal-foot">
+            <button className="btn" onClick={onClose}>Cancel</button>
+            <button
+              className="btn primary"
+              disabled={!tokenInput.trim() || tokenVerifying}
+              onClick={() => verifyToken(tokenInput.trim())}
+            >
+              {tokenVerifying
+                ? <><div className="login-spinner" style={{ width:14, height:14, borderWidth:2, borderTopColor:'#fff', borderColor:'rgba(255,255,255,0.3)' }}/> Verifying…</>
+                : 'Connect'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── NORMAL SYNC SCREEN ────────────────────────────────────
   return (
     <div className="scrim" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width: 'min(560px, calc(100vw - 32px))' }}>
 
-        {/* Header */}
         <div className="modal-head">
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontSize:22 }}>📊</span>
@@ -1918,17 +2015,24 @@ function SmartsheetPanel({ onClose, onSync, currentEvents }) {
 
         <div className="modal-body" style={{ padding:'20px', display:'flex', flexDirection:'column', gap:16 }}>
 
-          {/* Connection Status */}
+          {/* Connection status */}
           <div style={{ padding:'12px 16px', borderRadius:10, border:'1px solid var(--line)', background: loading ? 'var(--bg-tint)' : status?.connected ? '#EDF7ED' : '#FFF3F3', display:'flex', alignItems:'center', gap:12 }}>
             {loading ? (
               <><div className="login-spinner" style={{ width:18, height:18, borderWidth:2 }}/><span style={{ color:'var(--ink-3)', fontSize:13 }}>Connecting to Smartsheet…</span></>
             ) : status?.connected ? (
               <>
                 <span style={{ fontSize:18 }}>✅</span>
-                <div>
+                <div style={{ flex:1 }}>
                   <div style={{ fontWeight:600, fontSize:13, color:'#1A6B1A' }}>Connected</div>
-                  <div style={{ fontSize:12, color:'#2E7D32' }}>{status.name} · {status.email}</div>
+                  <div style={{ fontSize:12, color:'#2E7D32' }}>
+                    {connectedUser ? `${connectedUser.name} · ${connectedUser.email}` : `${status.name} · ${status.email}`}
+                  </div>
                 </div>
+                {isElectron && (
+                  <button onClick={disconnect} style={{ fontSize:11, padding:'4px 10px', border:'1px solid #C62828', borderRadius:6, background:'transparent', color:'#C62828', cursor:'pointer', flexShrink:0 }}>
+                    Disconnect
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -1941,7 +2045,7 @@ function SmartsheetPanel({ onClose, onSync, currentEvents }) {
             )}
           </div>
 
-          {/* Sheet List */}
+          {/* Sheet list */}
           {!loading && status?.connected && (
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
@@ -1954,73 +2058,50 @@ function SmartsheetPanel({ onClose, onSync, currentEvents }) {
                 </div>
               </div>
               <div style={{ maxHeight:220, overflowY:'auto', border:'1px solid var(--line)', borderRadius:8, background:'var(--bg)' }}>
-                {sheets.length === 0 ? (
-                  <div style={{ padding:20, textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>No sheets found in your account.</div>
-                ) : (
-                  sheets.map(sh => (
-                    <label key={sh.id} className="ss-sheet-row">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(String(sh.id))}
-                        onChange={() => toggleSheet(String(sh.id))}
-                        style={{ accentColor:'#0078D4', width:14, height:14, flexShrink:0 }}
-                      />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontWeight:500, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sh.name}</div>
-                        {sh.modifiedAt && <div style={{ fontSize:11, color:'var(--ink-3)' }}>Modified {fmtDate(sh.modifiedAt)}</div>}
-                      </div>
-                      <span style={{ fontSize:10, color:'var(--ink-4)', flexShrink:0 }}>{sh.accessLevel}</span>
-                    </label>
-                  ))
-                )}
+                {sheets.length === 0
+                  ? <div style={{ padding:20, textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>No sheets found in your account.</div>
+                  : sheets.map(sh => (
+                      <label key={sh.id} className="ss-sheet-row">
+                        <input type="checkbox" checked={selected.has(String(sh.id))} onChange={() => toggleSheet(String(sh.id))} style={{ accentColor:'#0078D4', width:14, height:14, flexShrink:0 }}/>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:500, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sh.name}</div>
+                          {sh.modifiedAt && <div style={{ fontSize:11, color:'var(--ink-3)' }}>Modified {fmtDate(sh.modifiedAt)}</div>}
+                        </div>
+                        <span style={{ fontSize:10, color:'var(--ink-4)', flexShrink:0 }}>{sh.accessLevel}</span>
+                      </label>
+                    ))
+                }
               </div>
               <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:6 }}>
-                {selected.size} sheet{selected.size !== 1 ? 's' : ''} selected · Synced events appear as <strong>Personal</strong> — visible only to you
+                {selected.size} sheet{selected.size !== 1 ? 's' : ''} selected · Synced events are private — visible only to you
               </div>
             </div>
           )}
 
-          {/* Stats row */}
+          {/* Stats */}
           {currentEvents.length > 0 && (
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               <div style={{ padding:'8px 14px', background:'rgba(0,120,212,0.08)', borderRadius:8, fontSize:12, color:'#0066CC', fontWeight:600 }}>
                 📅 {currentEvents.length} event{currentEvents.length !== 1 ? 's' : ''} loaded
               </div>
-              {lastSync && (
-                <div style={{ padding:'8px 14px', background:'var(--bg-tint)', borderRadius:8, fontSize:12, color:'var(--ink-3)' }}>
-                  🕐 Last synced {lastSync}
-                </div>
-              )}
+              {lastSync && <div style={{ padding:'8px 14px', background:'var(--bg-tint)', borderRadius:8, fontSize:12, color:'var(--ink-3)' }}>🕐 Last synced {lastSync}</div>}
             </div>
           )}
 
-          {/* Error */}
           {error && (
-            <div style={{ padding:'10px 14px', background:'#FFF0F0', border:'1px solid #FFB3B3', borderRadius:8, fontSize:13, color:'#CC0000' }}>
-              ⚠️ {error}
-            </div>
+            <div style={{ padding:'10px 14px', background:'#FFF0F0', border:'1px solid #FFB3B3', borderRadius:8, fontSize:13, color:'#CC0000' }}>⚠️ {error}</div>
           )}
         </div>
 
-        {/* Footer */}
         <div className="modal-foot">
           {currentEvents.length > 0 && (
-            <button className="btn" onClick={clearAll} style={{ color:'#CC3333', borderColor:'#CC3333' }}>
-              🗑 Clear Events
-            </button>
+            <button className="btn" onClick={clearAll} style={{ color:'#CC3333', borderColor:'#CC3333' }}>🗑 Clear Events</button>
           )}
           <div className="spacer"/>
           <button className="btn" onClick={onClose}>Close</button>
           {status?.connected && (
-            <button
-              className="btn primary"
-              onClick={doSync}
-              disabled={syncing || selected.size === 0}
-              style={{ display:'flex', alignItems:'center', gap:6, opacity: selected.size === 0 ? 0.5 : 1 }}
-            >
-              {syncing
-                ? <><div className="login-spinner" style={{ width:14, height:14, borderWidth:2, borderTopColor:'#fff', borderColor:'rgba(255,255,255,0.3)' }}/> Syncing…</>
-                : '🔄 Sync Now'}
+            <button className="btn primary" onClick={doSync} disabled={syncing || selected.size === 0} style={{ display:'flex', alignItems:'center', gap:6, opacity: selected.size === 0 ? 0.5 : 1 }}>
+              {syncing ? <><div className="login-spinner" style={{ width:14, height:14, borderWidth:2, borderTopColor:'#fff', borderColor:'rgba(255,255,255,0.3)' }}/> Syncing…</> : '🔄 Sync Now'}
             </button>
           )}
         </div>
@@ -2088,6 +2169,8 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
   const [jumpOpen, setJumpOpen]=useState(false);
   const [shortcutsOpen, setShortcutsOpen]=useState(false);
   const [myEventsOnly, setMyEventsOnly]=useState(false);
+  const [appVersion, setAppVersion]=useState(APP_VERSION);
+  useEffect(()=>{ if(window.electronAPI) window.electronAPI.getVersion().then(v=>{ if(v) setAppVersion(v); }); },[]);
   const [contextMenu, setContextMenu]=useState(null);
   const [userMenuOpen, setUserMenuOpen]=useState(false);
   const userMenuRef=useRef(null);
@@ -2317,6 +2400,7 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
         canUndo={undoStack.length>0} canRedo={redoStack.length>0}
         myEventsOnly={myEventsOnly} setMyEventsOnly={setMyEventsOnly}
         authUser={authUser} onSignOut={onSignOut}
+        appVersion={appVersion}
       />
       <Resizer width={prefs.sidebarWidth||300} onChange={w=>setPrefs(p=>({...p,sidebarWidth:w}))}/>
       <div className="main">
