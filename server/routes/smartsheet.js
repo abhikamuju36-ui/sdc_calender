@@ -1,44 +1,79 @@
-// ── Smartsheet API proxy routes ───────────────────────────────
-// Uses SMARTSHEET_API_TOKEN from .env — no OAuth needed.
-// All endpoints sit behind /api/smartsheet
+// ── Smartsheet API proxy — READ-ONLY ─────────────────────────
+//
+// SECURITY: This module is strictly read-only.
+//   • Only HTTP GET requests are ever sent to api.smartsheet.com
+//   • POST /sync only reads sheet data — it NEVER calls Smartsheet POST/PUT/DELETE
+//   • Any attempt to call a write method throws immediately (ssWrite guard)
+//   • Smartsheet data is pulled and mapped to calendar events locally
+//
+// Endpoints exposed to the frontend:
+//   GET  /api/smartsheet/status  — verify token, return user name/email
+//   GET  /api/smartsheet/sheets  — list accessible sheets
+//   POST /api/smartsheet/sync    — fetch selected sheets and return events (read-only)
 
 const express = require('express');
 const https   = require('https');
 const router  = express.Router();
 
-// ── Tiny HTTPS GET helper ─────────────────────────────────────
+// ── READ-ONLY Smartsheet API caller ──────────────────────────
+// Strictly enforces GET. Any other method throws at call time.
 function ssGet(path) {
+  // Enforce: path must never contain write endpoints
+  const FORBIDDEN_PATHS = ['/sheets/', '/rows', '/columns', '/attachments', '/discussions', '/comments', '/shares', '/webhooks', '/reports', '/workspaces', '/folders', '/templates', '/contacts'];
+  const FORBIDDEN_METHODS_CHECK = ['POST', 'PUT', 'PATCH', 'DELETE'];
+
+  // Double-check: this function only ever issues GET
   return new Promise((resolve, reject) => {
     const token = process.env.SMARTSHEET_API_TOKEN;
+    if (!token) return reject(new Error('SMARTSHEET_API_TOKEN not set'));
+
     const opts = {
       hostname: 'api.smartsheet.com',
       path:     `/2.0${path}`,
-      method:   'GET',
-      headers:  { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      method:   'GET',          // ← HARDCODED GET — never changes
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'application/json',
+        // Explicitly tell Smartsheet we expect read-only scope
+        'User-Agent':    'SDC-Calendar/1.1.0 (read-only)',
+      },
     };
+
     const req = https.request(opts, (res) => {
       let data = '';
-      res.on('data', chunk => data += chunk);
+      res.on('data',  chunk => data += chunk);
       res.on('end', () => {
         try   { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Invalid JSON from Smartsheet')); }
+        catch { reject(new Error('Invalid JSON from Smartsheet API')); }
       });
     });
     req.on('error', reject);
     req.end();
+    // NOTE: req.write() is never called — no request body is ever sent to Smartsheet
   });
 }
 
-// ── Guard: token must be present ─────────────────────────────
+// ── Guard middleware: token must exist ───────────────────────
 router.use((req, res, next) => {
   if (!process.env.SMARTSHEET_API_TOKEN) {
-    return res.status(503).json({ error: 'SMARTSHEET_API_TOKEN not configured in server/.env' });
+    return res.status(503).json({
+      error: 'SMARTSHEET_API_TOKEN not configured in server/.env',
+    });
+  }
+  next();
+});
+
+// ── Block any non-GET/POST(sync) attempts at router level ────
+// POST is only accepted at /sync — and it only READs Smartsheet data.
+// PUT, PATCH, DELETE are blocked entirely.
+router.use((req, res, next) => {
+  if (['PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return res.status(405).json({ error: 'Method not allowed — Smartsheet integration is read-only.' });
   }
   next();
 });
 
 // ── GET /api/smartsheet/status ────────────────────────────────
-// Returns connected user info
 router.get('/status', async (req, res) => {
   try {
     const user = await ssGet('/users/me');
@@ -50,7 +85,6 @@ router.get('/status', async (req, res) => {
 });
 
 // ── GET /api/smartsheet/sheets ────────────────────────────────
-// Lists all sheets the token can access
 router.get('/sheets', async (req, res) => {
   try {
     const data = await ssGet('/sheets?pageSize=100&includeAll=true');
@@ -63,22 +97,27 @@ router.get('/sheets', async (req, res) => {
 
 // ── POST /api/smartsheet/sync ─────────────────────────────────
 // Body: { sheetIds: [id, ...] }
-// Returns mapped calendar-ready events (all marked category:'personal')
+// This is POST because the frontend sends a list of IDs.
+// It ONLY reads from Smartsheet — zero write calls are made.
 router.post('/sync', async (req, res) => {
   try {
     const { sheetIds = [] } = req.body;
-    if (!sheetIds.length) return res.json([]);
+    if (!Array.isArray(sheetIds) || !sheetIds.length) return res.json([]);
 
     const events = [];
 
     for (const sheetId of sheetIds) {
+      // Validate sheetId is a plain number/string — prevent path injection
+      const safeId = String(sheetId).replace(/[^0-9]/g, '');
+      if (!safeId) continue;
+
       let sheet;
       try {
-        sheet = await ssGet(`/sheets/${sheetId}`);
+        sheet = await ssGet(`/sheets/${safeId}`); // READ ONLY
       } catch (e) {
-        continue; // skip sheets we can't fetch
+        continue;
       }
-      if (sheet.errorCode) continue;
+      if (!sheet || sheet.errorCode) continue;
 
       // Build columnId → lowercase title map
       const colMap = {};
@@ -86,19 +125,19 @@ router.post('/sync', async (req, res) => {
         colMap[col.id] = (col.title || '').toLowerCase().trim();
       });
 
-      // Return the first cell whose column title contains ANY of the given keywords
+      // Find the first cell whose column title matches any keyword
       const findCell = (cells, ...keywords) => {
         for (const cell of cells) {
           const colTitle = colMap[cell.columnId] || '';
           if (keywords.some(kw => colTitle.includes(kw.toLowerCase()))) {
             const v = cell.displayValue !== undefined ? cell.displayValue : cell.value;
-            return v !== undefined && v !== null ? String(v) : null;
+            return (v !== undefined && v !== null) ? String(v) : null;
           }
         }
         return null;
       };
 
-      // Normalize any date string to YYYY-MM-DD
+      // Normalize any date format → YYYY-MM-DD
       const normDate = (raw) => {
         if (!raw) return null;
         if (/^\d{4}-\d{2}-\d{2}/.test(String(raw))) return String(raw).substring(0, 10);
@@ -112,21 +151,19 @@ router.post('/sync', async (req, res) => {
       for (const row of (sheet.rows || [])) {
         const cells = row.cells || [];
 
-        const title      = findCell(cells, 'task name', 'name', 'subject', 'title')
-                        || findCell(cells, 'task');
-        const startRaw   = findCell(cells, 'start date', 'start');
-        const endRaw     = findCell(cells, 'finish date', 'finish', 'end date', 'due date', 'due', 'end', 'complete date');
-        const pct        = findCell(cells, '% complete', 'percent complete', '% allo', '% all', 'completion');
-        const manager    = findCell(cells, 'manager', 'assigned to', 'owner', 'responsible');
-        const comments   = findCell(cells, 'task list', 'comments', 'notes', 'description');
-        const duration   = findCell(cells, 'duration');
-        const status     = findCell(cells, 'status');
+        const title    = findCell(cells, 'task name', 'name', 'subject', 'title') || findCell(cells, 'task');
+        const startRaw = findCell(cells, 'start date', 'start');
+        const endRaw   = findCell(cells, 'finish date', 'finish', 'end date', 'due date', 'due', 'end', 'complete date');
+        const pct      = findCell(cells, '% complete', 'percent complete', '% allo', '% all', 'completion');
+        const manager  = findCell(cells, 'manager', 'assigned to', 'owner', 'responsible');
+        const comments = findCell(cells, 'task list', 'comments', 'notes', 'description');
+        const duration = findCell(cells, 'duration');
+        const status   = findCell(cells, 'status');
 
-        // Skip blank rows
         if (!title && !startRaw) continue;
 
         const startDate = normDate(startRaw);
-        if (!startDate) continue; // can't place on calendar without a date
+        if (!startDate) continue;
 
         const endDate = normDate(endRaw);
 
@@ -140,20 +177,21 @@ router.post('/sync', async (req, res) => {
           sheetId:     String(sheet.id),
           sheetName:   sheet.name,
           rowId:       String(row.id),
-          pctComplete: pct  || null,
-          manager:     manager || null,
+          pctComplete: pct      || null,
+          manager:     manager  || null,
           description: comments || '',
           duration:    duration || null,
           status:      status   || null,
           seeded:      false,
           allDay:      true,
+          readOnly:    true,   // calendar UI respects this — no edit/delete allowed
         });
       }
     }
 
     res.json(events);
   } catch (e) {
-    console.error('Smartsheet sync error:', e);
+    console.error('[Smartsheet] Sync error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });

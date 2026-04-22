@@ -356,9 +356,9 @@ function ContextMenu({ x, y, event, onEdit, onDelete, onPin, onClose }) {
   return (
     <div style={{position:'fixed',left:x,top:y,zIndex:300,background:'var(--bg-elev)',border:'1px solid var(--line)',borderRadius:8,boxShadow:'var(--shadow-lg)',minWidth:160,overflow:'hidden',animation:'rise .1s ease'}}>
       {[
-        {label:`✏️ Edit "${event.title.substring(0,20)}"`, action:onEdit, disabled: event.seeded},
-        {label: event.pinned ? '📌 Unpin' : '📌 Pin', action:onPin},
-        {label:'🗑️ Delete', action:onDelete, danger:true, disabled: event.seeded},
+        {label:`✏️ Edit "${event.title.substring(0,20)}"`, action:onEdit, disabled: event.seeded||event.source==='smartsheet'},
+        {label: event.pinned ? '📌 Unpin' : '📌 Pin', action:onPin, disabled: event.source==='smartsheet'},
+        {label:'🗑️ Delete', action:onDelete, danger:true, disabled: event.seeded||event.source==='smartsheet'},
       ].map((item,i) => (
         <button key={i} disabled={item.disabled}
           style={{display:'block',width:'100%',padding:'9px 14px',border:0,background:'transparent',textAlign:'left',fontSize:13,cursor:item.disabled?'not-allowed':'pointer',color:item.danger?'#C0392B':item.disabled?'var(--ink-4)':'var(--ink-2)'}}
@@ -697,7 +697,7 @@ function MonthGrid({ viewDate, events, activeCats, search, weekStart, showWeeken
                             key={ev.id}
                             className={chipCls.join(' ')}
                             style={{'--chip-fg':fg,'--chip-bg':bg}}
-                            draggable={!ev.seeded}
+                            draggable={!ev.seeded && ev.source!=='smartsheet'}
                             onDragStart={(e)=>{ e.stopPropagation(); setDragId(ev.id); e.dataTransfer.effectAllowed='move'; }}
                             onClick={(e)=>{ e.stopPropagation(); onOpenEvent(ev); }}
                             onMouseEnter={(e)=>onHover&&onHover(ev,e)}
@@ -767,7 +767,9 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
   const [showConflict, setShowConflict]=useState(false);
   const [recurEditMode, setRecurEditMode]=useState(null);
   const isSeeded=event&&event.seeded;
-  const up=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const isSmartsheet=event&&event.source==='smartsheet'; // read-only — never editable
+  const isReadOnly=isSeeded||isSmartsheet;
+  const up=(k,v)=>{ if(isReadOnly) return; setForm(f=>({...f,[k]:v})); };
   const cat=CATMAP[form.category]||CATMAP['personal'];
 
   const submit=(force=false)=>{
@@ -829,7 +831,7 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
     <div className="scrim" onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
       <div className="modal" role="dialog" aria-modal="true">
         <div className="modal-head">
-          <h2>{mode==='edit'?(isSeeded?'Event details':'Edit event'):'New event'}</h2>
+          <h2>{mode==='edit'?(isSmartsheet?'Smartsheet Task':isSeeded?'Event details':'Edit event'):'New event'}</h2>
           <button className="iconbtn" onClick={onClose} aria-label="Close">{Icon.x}</button>
         </div>
 
@@ -947,14 +949,20 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
               </div>
             </div>
 
+            {isSmartsheet && (
+              <div style={{margin:'0 20px 12px',padding:'10px 14px',background:'rgba(0,120,212,0.07)',border:'1px solid rgba(0,120,212,0.2)',borderRadius:8,display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#0066CC'}}>
+                <span className="ss-badge">SS</span>
+                <span>This task is synced from <strong>Smartsheet</strong> and is <strong>read-only</strong>. Edit it in Smartsheet to make changes.</span>
+              </div>
+            )}
             <div className="modal-foot">
-              {mode==='edit'&&!isSeeded&&<button className="btn danger" onClick={()=>onDelete(form.id)}>{Icon.trash} Delete</button>}
-              {!isSeeded&&<button className="btn btn-sm" onClick={()=>up('pinned',!form.pinned)} title="Pin this event" style={{color:form.pinned?'#F39C12':'var(--ink-3)',borderColor:form.pinned?'#F39C12':'var(--line-strong)'}}>
+              {mode==='edit'&&!isReadOnly&&<button className="btn danger" onClick={()=>onDelete(form.id)}>{Icon.trash} Delete</button>}
+              {!isReadOnly&&<button className="btn btn-sm" onClick={()=>up('pinned',!form.pinned)} title="Pin this event" style={{color:form.pinned?'#F39C12':'var(--ink-3)',borderColor:form.pinned?'#F39C12':'var(--line-strong)'}}>
                 {form.pinned ? '📌 Pinned' : '📌 Pin'}
               </button>}
               <div className="spacer"/>
-              <button className="btn" onClick={onClose}>Cancel</button>
-              <button className="btn primary" onClick={()=>submit()} disabled={!form.title.trim()}>{mode==='edit'?'Save changes':'Create event'}</button>
+              <button className="btn" onClick={onClose}>{isReadOnly?'Close':'Cancel'}</button>
+              {!isReadOnly&&<button className="btn primary" onClick={()=>submit()} disabled={!form.title.trim()}>{mode==='edit'?'Save changes':'Create event'}</button>}
             </div>
           </React.Fragment>
         )}
