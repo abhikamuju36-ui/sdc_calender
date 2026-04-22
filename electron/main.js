@@ -83,7 +83,7 @@ function createWindow() {
       webSecurity:      true,
     },
     title:           'SDC Centralized Calendar',
-    icon:            path.join(__dirname, '..', 'assets', 'sdc-logo.png'),
+    icon:            path.join(__dirname, '..', 'sdc-calendar-icons-1024', 'sdc-calendar-icon-C-1024.png'),
     backgroundColor: '#ffffff',
     show:            false, // reveal only when ready — avoids white flash
   });
