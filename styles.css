@@ -42,7 +42,7 @@
   --shadow-md: 0 4px 16px rgba(10,22,40,0.12), 0 1px 4px rgba(10,22,40,0.06);
   --shadow-lg: 0 20px 60px rgba(10,22,40,0.22), 0 6px 16px rgba(10,22,40,0.10);
 
-  --cell-min: 116px;
+  --cell-min: 130px;
   --density-pad: 10px;
   --font-sans: 'Inter','Barlow',ui-sans-serif,system-ui,sans-serif;
   --font-display: 'Inter','Barlow Condensed',sans-serif;
@@ -172,6 +172,9 @@ a { color:var(--accent); }
 .week-row {
   display: grid;
   grid-template-columns: repeat(var(--cols,7),1fr);
+  height: var(--cell-min);    /* fixed equal height for every row */
+  flex: none;                 /* don't grow beyond fixed height */
+  overflow: hidden;
   flex: 1;
   position: relative;
   border-bottom: 1px solid var(--line);
@@ -179,7 +182,7 @@ a { color:var(--accent); }
 }
 .week-row:last-child { border-bottom:0; }
 
-.cell { border-right:1px solid var(--line); padding:var(--density-pad); display:flex; flex-direction:column; background:var(--bg-elev); cursor:pointer; transition:background .1s; min-height:0; }
+.cell { border-right:1px solid var(--line); padding:var(--density-pad); display:flex; flex-direction:column; background:var(--bg-elev); cursor:pointer; transition:background .1s; min-height:0; overflow:hidden; }
 .cell:last-child { border-right:0; }
 .cell:hover { background:#F0F6FF; }
 .cell.out { background:var(--bg-tint); }
@@ -227,9 +230,9 @@ a { color:var(--accent); }
 .banner-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* density */
-.density-compact { --cell-min:90px; --density-pad:6px; }
+.density-compact { --cell-min:105px; --density-pad:6px; }
 .density-compact .chip { padding:2px 6px; font-size:11px; }
-.density-comfy { --cell-min:136px; --density-pad:12px; }
+.density-comfy { --cell-min:160px; --density-pad:12px; }
 
 /* weekend hidden */
 .weekend-hidden .dow-row,.weekend-hidden .cal-grid { grid-template-columns:repeat(5,1fr); }
@@ -555,6 +558,12 @@ a { color:var(--accent); }
 
 /* ── Feature 22: Category shapes swatch ────────────────── */
 .filter .swatch { width:14px; height:14px; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--sw,var(--side-ink-3)); background:transparent; flex-shrink:0; }
+
+/* ── Day Modal improved chips ───────────────────────────── */
+.day-modal-chip { display:flex; align-items:center; gap:8px; padding:7px 11px; border-radius:7px; font-size:13px; cursor:pointer; border-left:3px solid var(--chip-fg,var(--ink-3)); background:var(--chip-bg,var(--bg-tint)); color:var(--ink); transition:filter .12s; }
+.day-modal-chip:hover { filter:brightness(0.96); }
+.day-modal-ss-chip { padding:10px 12px; border-radius:8px; background:rgba(0,120,212,0.05); border:1px solid rgba(0,120,212,0.15); cursor:pointer; transition:background .12s; }
+.day-modal-ss-chip:hover { background:rgba(0,120,212,0.1); }
 
 /* ── Smartsheet Integration ─────────────────────────────── */
 .ss-badge { font-size:7.5px; font-weight:700; background:#0078D4; color:#fff; border-radius:3px; padding:1px 4px; letter-spacing:0.05em; flex-shrink:0; line-height:1.4; }

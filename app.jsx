@@ -686,7 +686,8 @@ function MonthGrid({ viewDate, events, activeCats, search, weekStart, showWeeken
                     <div className="chips" style={{paddingTop:`${chipOffset}px`}}>
                       {shown.map(ev=>{
                         const cat=CATMAP[ev.category];
-                        const fg=ev.color||cat.sw, bg=ev.color?(ev.color+'22'):cat.swBg;
+                        const ssColor=ev.source==='smartsheet'&&ev.pctComplete?ssPctColor(ev.pctComplete):null;
+                        const fg=ssColor||(ev.color||cat.sw), bg=ssColor?(ssColor+'22'):(ev.color?(ev.color+'22'):cat.swBg);
                         const isMatch=search&&ev.title.toLowerCase().includes(search.toLowerCase());
                         const chipCls=['chip'];
                         if(ev.pinned) chipCls.push('pinned');
@@ -971,26 +972,91 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
   );
 }
 
+// ─── Helper: progress colour for SS events ───────────────────
+function ssPctColor(pct) {
+  const p = parseInt(pct) || 0;
+  if (p >= 100) return '#1B8A3F';
+  if (p >= 75)  return '#2E9E55';
+  if (p >= 50)  return '#E07B00';
+  if (p >= 25)  return '#C0510A';
+  return '#B71C1C';
+}
+
 // ─── Day overflow modal ───────────────────────────────────────
 function DayModal({ date, events, onClose, onOpenEvent, onNewOnDate }) {
+  const ssEvents  = events.filter(e => e.source === 'smartsheet');
+  const regEvents = events.filter(e => e.source !== 'smartsheet');
+
+  const RegChip = ({ev}) => {
+    const cat = CATMAP[ev.category];
+    const fg  = ev.color||cat.sw, bg = ev.color?(ev.color+'22'):cat.swBg;
+    return (
+      <div className="day-modal-chip" style={{'--chip-fg':fg,'--chip-bg':bg}} onClick={()=>{ onClose(); onOpenEvent(ev); }}>
+        {!ev.allDay&&ev.time&&<span style={{fontSize:11,opacity:0.7,flexShrink:0}}>{fmtTime(ev.time)}</span>}
+        <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.title}</span>
+        {ev.pinned&&<span style={{fontSize:10}}>📌</span>}
+      </div>
+    );
+  };
+
+  const SSChip = ({ev}) => {
+    const pct   = parseInt(ev.pctComplete)||0;
+    const color = ssPctColor(pct);
+    return (
+      <div className="day-modal-ss-chip" onClick={()=>{ onClose(); onOpenEvent(ev); }}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+          <span className="ss-badge" style={{background:color}}>SS</span>
+          <span style={{fontSize:12,fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--ink)'}}>{ev.title}</span>
+          {ev.pctComplete&&<span style={{fontSize:11,fontWeight:700,color,flexShrink:0}}>{ev.pctComplete}</span>}
+        </div>
+        <div style={{height:4,background:'var(--line)',borderRadius:2,overflow:'hidden',marginBottom:4}}>
+          <div style={{height:'100%',width:`${Math.min(pct,100)}%`,background:color,borderRadius:2,transition:'width 0.3s'}}/>
+        </div>
+        <div style={{display:'flex',gap:12,fontSize:10,color:'var(--ink-3)',flexWrap:'wrap'}}>
+          {ev.sheetName&&<span>📋 {ev.sheetName.replace(/^\d{4}[-–\s]*/,'')}</span>}
+          {ev.manager&&<span>👤 {ev.manager}</span>}
+          {ev.duration&&<span>⏱ {ev.duration}</span>}
+          {ev.status&&<span style={{color:ev.status.toLowerCase().includes('complete')?'#1B8A3F':'var(--ink-3)'}}>● {ev.status}</span>}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="scrim" onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div className="modal" style={{width:'min(460px,calc(100vw - 32px))'}} role="dialog" aria-modal="true">
+      <div className="modal" style={{width:'min(520px,calc(100vw - 32px))'}} role="dialog" aria-modal="true">
         <div className="modal-head">
-          <h2>{DOW_LONG[date.getDay()]}, {MONTHS[date.getMonth()]} {date.getDate()}</h2>
+          <div>
+            <h2 style={{margin:0}}>{DOW_LONG[date.getDay()]}, {MONTHS[date.getMonth()]} {date.getDate()}</h2>
+            <div style={{fontSize:12,color:'var(--ink-3)',marginTop:2}}>{events.length} event{events.length!==1?'s':''}{ssEvents.length>0?` · ${ssEvents.length} from Smartsheet`:''}</div>
+          </div>
           <button className="iconbtn" onClick={onClose} aria-label="Close">{Icon.x}</button>
         </div>
-        <div className="modal-body" style={{gap:6}}>
-          {events.map(ev=>{
-            const cat=CATMAP[ev.category];
-            const fg=ev.color||cat.sw, bg=ev.color?(ev.color+'22'):cat.swBg;
-            return (
-              <div key={ev.id} className="chip" style={{'--chip-fg':fg,'--chip-bg':bg,padding:'8px 10px',fontSize:13}} onClick={()=>{ onClose(); onOpenEvent(ev); }}>
-                {!ev.allDay&&ev.time&&<span className="t">{fmtTime(ev.time)}</span>}
-                <span className="ttl">{ev.title}</span>
+        <div className="modal-body" style={{gap:0,padding:'12px 16px',maxHeight:'60vh',overflowY:'auto'}}>
+
+          {/* Regular events */}
+          {regEvents.length > 0 && (
+            <div style={{marginBottom: ssEvents.length>0?16:0}}>
+              {regEvents.length > 0 && ssEvents.length > 0 && (
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:'var(--ink-3)',marginBottom:6,paddingLeft:2}}>Calendar Events</div>
+              )}
+              <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                {regEvents.map(ev=><RegChip key={ev.id} ev={ev}/>)}
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Smartsheet tasks */}
+          {ssEvents.length > 0 && (
+            <div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:'#0066CC',marginBottom:6,paddingLeft:2,display:'flex',alignItems:'center',gap:6}}>
+                <span className="ss-badge">SS</span> Smartsheet Tasks ({ssEvents.length})
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {ssEvents.map(ev=><SSChip key={ev.id} ev={ev}/>)}
+              </div>
+            </div>
+          )}
         </div>
         <div className="modal-foot">
           <div className="spacer"/>
