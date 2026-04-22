@@ -6,8 +6,9 @@ const corsMiddleware = require('cors');
 const path    = require('path');
 
 require('./db'); // initialises NeDB datastores on load
-const authRouter  = require('./auth');
-const adminRouter = require('./routes/admin');
+const authRouter        = require('./auth');
+const adminRouter       = require('./routes/admin');
+const smartsheetRouter  = require('./routes/smartsheet');
 
 const app      = express();
 const API_PORT = process.env.PORT        || 3001;
@@ -34,8 +35,9 @@ app.use(session({
 }));
 
 // ── API Routes ────────────────────────────────────────────
-app.use('/auth',      authRouter);
-app.use('/api/admin', adminRouter);
+app.use('/auth',             authRouter);
+app.use('/api/admin',        adminRouter);
+app.use('/api/smartsheet',   smartsheetRouter);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 // ── Serve static calendar files ───────────────────────────

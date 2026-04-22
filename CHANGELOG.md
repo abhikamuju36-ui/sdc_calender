@@ -6,6 +6,29 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.0] — 2026-04-22
+
+### ✨ Smartsheet Integration
+
+#### New Feature: Smartsheet Sync
+- **Connect button** in user menu dropdown (📊 Smartsheet Sync) with live event count badge
+- **SmartsheetPanel modal** — shows connection status, lists all your sheets, lets you select which to import
+- **Backend proxy** (`/api/smartsheet/*`) — all Smartsheet API calls go server-side using `SMARTSHEET_API_TOKEN` from `.env`
+- **Intelligent column mapping** — auto-detects Task Name, Start Date, Finish Date, % Complete, Manager, Comments, Duration, Status columns by title keywords
+- **Privacy enforced** — all synced events stored as `category: 'personal'`, never shown to other users
+- **Persistent selection** — remembers which sheets you had selected (localStorage)
+- **SS badge** on event chips for Smartsheet-sourced events, with % complete display
+- **Last synced timestamp** shown in panel
+- **Clear All** button to remove all Smartsheet events
+- Select All / Select None sheet shortcuts
+
+#### Backend
+- New route file `server/routes/smartsheet.js`
+- Routes: `GET /api/smartsheet/status`, `GET /api/smartsheet/sheets`, `POST /api/smartsheet/sync`
+- Uses Node.js built-in `https` module — no new npm dependencies
+
+---
+
 ## [1.0.0] — 2026-04-22
 
 ### 🎉 Initial Release

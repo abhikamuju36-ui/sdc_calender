@@ -509,7 +509,8 @@ a { color:var(--accent); }
 }
 .user-menu.open { display: block; }
 .user-menu button {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   padding: 10px 16px;
   text-align: left;
@@ -554,3 +555,12 @@ a { color:var(--accent); }
 
 /* ── Feature 22: Category shapes swatch ────────────────── */
 .filter .swatch { width:14px; height:14px; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--sw,var(--side-ink-3)); background:transparent; flex-shrink:0; }
+
+/* ── Smartsheet Integration ─────────────────────────────── */
+.ss-badge { font-size:7.5px; font-weight:700; background:#0078D4; color:#fff; border-radius:3px; padding:1px 4px; letter-spacing:0.05em; flex-shrink:0; line-height:1.4; }
+.ss-pct   { font-size:9px; color:var(--ink-3); flex-shrink:0; white-space:nowrap; }
+.ss-sheet-row { display:flex; align-items:center; gap:10; padding:10px 14px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s; gap:10px; }
+.ss-sheet-row:last-child { border-bottom:none; }
+.ss-sheet-row:hover { background:var(--bg-tint); }
+[data-theme='dark'] .ss-badge { background:#1e90d4; }
+[data-theme='dark'] .ss-sheet-row:hover { background:#162640; }

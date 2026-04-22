@@ -11,17 +11,22 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const JWT_SECRET   = process.env.JWT_SECRET;
 const SCOPES       = ['User.Read'];
 
-const pca = new msal.ConfidentialClientApplication({
-  auth: {
-    clientId:     process.env.CLIENT_ID,
-    authority:    `https://login.microsoftonline.com/${process.env.TENANT_ID}`,
-    clientSecret: process.env.CLIENT_SECRET,
-  },
-  system: { loggerOptions: { loggerCallback: () => {}, piiLoggingEnabled: false } }
-});
+// Only initialise MSAL when all Azure credentials are present
+const AZURE_READY = !!(process.env.CLIENT_ID && process.env.TENANT_ID && process.env.CLIENT_SECRET);
+const pca = AZURE_READY
+  ? new msal.ConfidentialClientApplication({
+      auth: {
+        clientId:     process.env.CLIENT_ID,
+        authority:    `https://login.microsoftonline.com/${process.env.TENANT_ID}`,
+        clientSecret: process.env.CLIENT_SECRET,
+      },
+      system: { loggerOptions: { loggerCallback: () => {}, piiLoggingEnabled: false } }
+    })
+  : null;
 
 // Step 1 — redirect to Microsoft login
 router.get('/login', async (_req, res) => {
+  if (!AZURE_READY) return res.status(503).send('Azure AD credentials not configured in .env');
   try {
     const url = await pca.getAuthCodeUrl({ scopes: SCOPES, redirectUri: REDIRECT_URI });
     res.redirect(url);
@@ -33,6 +38,7 @@ router.get('/login', async (_req, res) => {
 
 // Step 2 — Microsoft returns auth code here
 router.get('/callback', async (req, res) => {
+  if (!AZURE_READY) return res.status(503).send('Azure AD credentials not configured in .env');
   if (req.query.error) {
     console.error('Azure error:', req.query.error, req.query.error_description);
     const msg = encodeURIComponent(req.query.error_description || req.query.error || 'auth_failed');
