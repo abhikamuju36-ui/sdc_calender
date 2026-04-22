@@ -566,8 +566,10 @@ a { color:var(--accent); }
 .day-modal-ss-chip:hover { background:rgba(0,120,212,0.1); }
 
 /* ── Smartsheet Integration ─────────────────────────────── */
-.ss-badge { font-size:7.5px; font-weight:700; background:#0078D4; color:#fff; border-radius:3px; padding:1px 4px; letter-spacing:0.05em; flex-shrink:0; line-height:1.4; }
-.ss-pct   { font-size:9px; color:var(--ink-3); flex-shrink:0; white-space:nowrap; }
+.ss-badge   { font-size:7.5px; font-weight:700; background:#0078D4; color:#fff; border-radius:3px; padding:1px 4px; letter-spacing:0.05em; flex-shrink:0; line-height:1.4; }
+.ss-job-num { font-size:8px; font-weight:700; background:rgba(0,0,0,0.08); color:var(--ink-2); border-radius:3px; padding:1px 5px; letter-spacing:0.04em; flex-shrink:0; line-height:1.4; }
+.ss-pct     { font-size:9px; color:var(--ink-3); flex-shrink:0; white-space:nowrap; }
+[data-theme='dark'] .ss-job-num { background:rgba(255,255,255,0.12); color:var(--ink-3); }
 .ss-sheet-row { display:flex; align-items:center; gap:10; padding:10px 14px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s; gap:10px; }
 .ss-sheet-row:last-child { border-bottom:none; }
 .ss-sheet-row:hover { background:var(--bg-tint); }

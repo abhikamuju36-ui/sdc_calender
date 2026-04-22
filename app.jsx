@@ -707,7 +707,8 @@ function MonthGrid({ viewDate, events, activeCats, search, weekStart, showWeeken
                             title={ev.title}
                           >
                             {!ev.allDay&&ev.time&&<span className="t">{fmtTime(ev.time,timezone).replace(' ','').toLowerCase()}</span>}
-                            {ev.source==='smartsheet'&&<span className="ss-badge" title={`Smartsheet: ${ev.sheetName||''}`}>SS</span>}
+                            {ev.source==='smartsheet'&&<span className="ss-badge" title={ev.sheetName||'Smartsheet'}>SS</span>}
+                            {ev.source==='smartsheet'&&getJobNum(ev.sheetName)&&<span className="ss-job-num" title={ev.sheetName}>{getJobNum(ev.sheetName)}</span>}
                             <span className="ttl">{ev.title}</span>
                             {ev.pctComplete&&ev.source==='smartsheet'&&<span className="ss-pct">{ev.pctComplete}</span>}
                             {ev.repeat&&ev.repeat!=='none'&&<span className="chip-recur">↻</span>}
@@ -972,6 +973,15 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
   );
 }
 
+// ─── Helper: extract job number from sheet name ───────────────
+// "1118-Air Loop Assembly" → "1118"
+// "1132 - Uniformity Mapper" → "1132"
+function getJobNum(sheetName) {
+  if (!sheetName) return null;
+  const m = String(sheetName).match(/^(\d{3,6})/);
+  return m ? m[1] : null;
+}
+
 // ─── Helper: progress colour for SS events ───────────────────
 function ssPctColor(pct) {
   const p = parseInt(pct) || 0;
@@ -1004,19 +1014,23 @@ function DayModal({ date, events, onClose, onOpenEvent, onNewOnDate }) {
     const color = ssPctColor(pct);
     return (
       <div className="day-modal-ss-chip" onClick={()=>{ onClose(); onOpenEvent(ev); }}>
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-          <span className="ss-badge" style={{background:color}}>SS</span>
+        {/* Header row: job badge + title + % */}
+        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:5}}>
+          <span className="ss-badge" style={{background:color,flexShrink:0}}>SS</span>
+          {getJobNum(ev.sheetName)&&<span className="ss-job-num" style={{flexShrink:0}}>{getJobNum(ev.sheetName)}</span>}
           <span style={{fontSize:12,fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--ink)'}}>{ev.title}</span>
           {ev.pctComplete&&<span style={{fontSize:11,fontWeight:700,color,flexShrink:0}}>{ev.pctComplete}</span>}
         </div>
-        <div style={{height:4,background:'var(--line)',borderRadius:2,overflow:'hidden',marginBottom:4}}>
+        {/* Progress bar */}
+        <div style={{height:4,background:'var(--line)',borderRadius:2,overflow:'hidden',marginBottom:5}}>
           <div style={{height:'100%',width:`${Math.min(pct,100)}%`,background:color,borderRadius:2,transition:'width 0.3s'}}/>
         </div>
-        <div style={{display:'flex',gap:12,fontSize:10,color:'var(--ink-3)',flexWrap:'wrap'}}>
-          {ev.sheetName&&<span>📋 {ev.sheetName.replace(/^\d{4}[-–\s]*/,'')}</span>}
+        {/* Meta row: project name · manager · duration · status */}
+        <div style={{display:'flex',gap:10,fontSize:10,color:'var(--ink-3)',flexWrap:'wrap',alignItems:'center'}}>
+          {ev.sheetName&&<span style={{fontWeight:500,color:'var(--ink-2)'}}>📋 {ev.sheetName.replace(/^\d{3,6}[-–\s]*/,'').trim()}</span>}
           {ev.manager&&<span>👤 {ev.manager}</span>}
           {ev.duration&&<span>⏱ {ev.duration}</span>}
-          {ev.status&&<span style={{color:ev.status.toLowerCase().includes('complete')?'#1B8A3F':'var(--ink-3)'}}>● {ev.status}</span>}
+          {ev.status&&<span style={{color:ev.status.toLowerCase().includes('complete')?'#1B8A3F':'var(--ink-3)',fontWeight:ev.status.toLowerCase().includes('complete')?600:400}}>● {ev.status}</span>}
         </div>
       </div>
     );
