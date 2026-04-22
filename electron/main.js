@@ -13,8 +13,24 @@ let serverProcess = null;
 let mainWindow    = null;
 
 // ── Spawn the Express backend ─────────────────────────────────
-function startServer() {
+// Check if the server is already running on the target port
+function isPortInUse() {
   return new Promise((resolve) => {
+    http.get(`${API_URL}/api/health`, (res) => {
+      resolve(res.statusCode === 200);
+    }).on('error', () => resolve(false));
+  });
+}
+
+function startServer() {
+  return new Promise(async (resolve) => {
+    // If something is already listening on port 3001, use it as-is
+    const alreadyRunning = await isPortInUse();
+    if (alreadyRunning) {
+      console.log('[main] Server already running on port ' + API_PORT + ' — skipping spawn');
+      return resolve();
+    }
+
     const serverScript = path.join(__dirname, '..', 'server', 'server.js');
     const serverDir    = path.join(__dirname, '..', 'server');
 
@@ -42,14 +58,14 @@ function startServer() {
       }
       http.get(`${API_URL}/api/health`, (res) => {
         if (res.statusCode === 200) {
-          console.log('[main] Server ready ✓');
+          console.log('[main] Server ready');
           resolve();
         } else {
           setTimeout(poll, 400);
         }
       }).on('error', () => setTimeout(poll, 400));
     };
-    setTimeout(poll, 800); // give node a moment to start
+    setTimeout(poll, 800);
   });
 }
 
