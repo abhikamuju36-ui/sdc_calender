@@ -1,5 +1,5 @@
 // ── SDC Calendar — Electron main process ─────────────────────
-const { app, BrowserWindow, ipcMain, safeStorage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, shell, utilityProcess } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -43,15 +43,10 @@ function startServer() {
     const serverScript = path.join(__dirname, '..', 'server', 'server.js');
     const serverDir = path.join(__dirname, '..', 'server');
 
-    const nodePath = app.isPackaged ? process.execPath : 'node';
-    const spawnEnv = app.isPackaged 
-      ? { ...process.env, ELECTRON_RUN_AS_NODE: '1' } 
-      : { ...process.env };
-
-    serverProcess = spawn(nodePath, [serverScript], {
+    // Use utilityProcess.fork to safely run background Node execution without absolute spaces constraints
+    serverProcess = utilityProcess.fork(serverScript, [], {
       cwd: serverDir,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: spawnEnv,
+      stdio: 'pipe'
     });
 
     serverProcess.stdout.on('data', d => process.stdout.write('[server] ' + d));
