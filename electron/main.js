@@ -8,7 +8,7 @@ const http = require('http');
 const API_PORT = process.env.PORT || 3001;
 const API_URL = `http://localhost:${API_PORT}`;
 // Provide your hosted Express Web Server URL here to enable Thin Client Mode
-const CENTRAL_SERVER_URL = process.env.CENTRAL_SERVER_URL || 'http://10.0.0.7:3000';
+const CENTRAL_SERVER_URL = process.env.CENTRAL_SERVER_URL || 'http://10.0.0.7:3001';
 
 const TOKEN_FILE = () => path.join(app.getPath('userData'), 'ss_token.enc');
 
