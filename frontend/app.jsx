@@ -6,13 +6,17 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 // Feature 1: Hide skeleton pre-loader once React starts
 const el = document.getElementById('pre-loader'); if(el) el.style.display='none';
 
-// ─── Backend URL — update YOUR_SERVER_IP to match your Windows Server IP ───
-const API_URL = 'http://localhost:3001';
+// ─── Backend URL — auto-detects server from current host ─────────────────────
+const API_URL = (() => {
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3001';
+  return `${window.location.protocol}//${h}:3001`;
+})();
 
 // ─── LOCAL MODE — set to true when the on-prem server is not yet running ────
 // Switch to false once your Windows Server backend is deployed.
-const LOCAL_MODE = true;
-const LOCAL_USER = { name: 'Local Admin', email: 'admin@sdc.local', role: 'admin', allowedCategories: ['holiday','payday','birthday','meeting','company','deadline','personal'] };
+const LOCAL_MODE = false;
+const LOCAL_USER = { name: 'Local Admin', email: 'admin@sdc.local', role: 'admin', allowedCategories: ['holiday','payday','birthday','meeting','company','deadline','personal','vacation'] };
 
 // ─── Constants ───────────────────────────────────────────────
 const MONTHS       = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -30,6 +34,7 @@ const CATEGORIES = [
   { id: 'company',  label: 'Company Events', sw: 'var(--cat-company)',  swBg: 'var(--cat-company-bg)'  },
   { id: 'deadline', label: 'Deadlines',      sw: 'var(--cat-deadline)', swBg: 'var(--cat-deadline-bg)' },
   { id: 'personal', label: 'Personal',       sw: 'var(--cat-personal)', swBg: 'var(--cat-personal-bg)' },
+  { id: 'vacation', label: 'Vacation / PTO', sw: 'var(--cat-vacation)', swBg: 'var(--cat-vacation-bg)' },
 ];
 const CATMAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
 
@@ -236,7 +241,8 @@ function saveUserEvents(events) {
       date:e.date instanceof Date?e.date.toISOString():e.date,
       endDate:e.endDate instanceof Date?e.endDate.toISOString():e.endDate,
     }))));
-  } catch {}
+    return true;
+  } catch { return false; }
 }
 function loadPrefs()  { try { return JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'); } catch { return {}; } }
 function savePrefs(p) { try { localStorage.setItem(PREFS_KEY,JSON.stringify(p)); } catch {} }
@@ -261,6 +267,7 @@ const Icon = {
   bell:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
   link:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
   settings:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  smartsheet:<div style={{width:22,height:22,borderRadius:4,flexShrink:0,background:'url(/assets/smartsheet-button-1024.png) center / cover no-repeat'}}/>,
   edit:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
   warn:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
 };
@@ -322,27 +329,59 @@ function KeyboardShortcuts({ onClose }) {
 }
 
 // ─── Feature 10: Month Summary Bar ───────────────────────────
-function MonthSummaryBar({ viewDate, allEvents, activeCats }) {
+function MonthSummaryBar({ viewDate, allEvents, activeCats, setActiveCats }) {
   const som = startOfMonth(viewDate), eom = endOfMonth(viewDate);
-  const monthEvents = allEvents.filter(e => e.date >= som && e.date <= eom && activeCats.has(e.category));
+  const monthEvents = allEvents.filter(e => e.date >= som && e.date <= eom);
   const holidays = monthEvents.filter(e => e.category === 'holiday').length;
   const paydays = monthEvents.filter(e => e.category === 'payday').length;
   const birthdays = monthEvents.filter(e => e.category === 'birthday').length;
   const meetings = monthEvents.filter(e => e.category === 'meeting').length;
+  const vacations = monthEvents.filter(e => e.category === 'vacation').length;
+  
   const stats = [
-    holidays > 0 && { icon:'🏛️', label: `${holidays} holiday${holidays>1?'s':''}`, color: 'var(--cat-holiday)' },
-    paydays > 0 && { icon:'💰', label: `${paydays} payday${paydays>1?'s':''}`, color: 'var(--cat-payday)' },
-    birthdays > 0 && { icon:'🎂', label: `${birthdays} birthday${birthdays>1?'s':''}`, color: 'var(--cat-birthday)' },
-    meetings > 0 && { icon:'📅', label: `${meetings} meeting${meetings>1?'s':''}`, color: 'var(--cat-meeting)' },
+    holidays > 0 && { id: 'holiday', icon:'🏛️', label: `${holidays} holiday${holidays>1?'s':''}`, color: 'var(--cat-holiday)' },
+    paydays > 0 && { id: 'payday', icon:'💰', label: `${paydays} payday${paydays>1?'s':''}`, color: 'var(--cat-payday)' },
+    birthdays > 0 && { id: 'birthday', icon:'🎂', label: `${birthdays} birthday${birthdays>1?'s':''}`, color: 'var(--cat-birthday)' },
+    vacations > 0 && { id: 'vacation', icon:'🌴', label: `${vacations} vacation${vacations>1?'s':''}`, color: 'var(--cat-vacation)' },
+    meetings > 0 && { id: 'meeting', icon:'📅', label: `${meetings} meeting${meetings>1?'s':''}`, color: 'var(--cat-meeting)' },
   ].filter(Boolean);
+
   if (stats.length === 0) return null;
+
+  const handlePillClick = (catId) => {
+    if (!setActiveCats) return;
+    setActiveCats(prev => {
+      if (prev.size === 1 && prev.has(catId)) {
+        // Toggle back to ALL active
+        return new Set(CATEGORIES.map(c => c.id));
+      }
+      return new Set([catId]);
+    });
+  };
+
   return (
     <div className="month-summary-bar">
-      {stats.map((s,i) => (
-        <div key={i} className="summary-pill" style={{'--pill-color': s.color}}>
-          <span>{s.icon}</span><span>{s.label}</span>
-        </div>
-      ))}
+      {stats.map((s,i) => {
+        const isIsolated = activeCats.size === 1 && activeCats.has(s.id);
+        return (
+          <div 
+            key={i} 
+            className={`summary-pill ${isIsolated ? 'isolated' : ''}`} 
+            style={{
+              '--pill-color': s.color, 
+              cursor: 'pointer',
+              border: isIsolated ? `2px solid ${s.color}` : '1px solid transparent',
+              transform: isIsolated ? 'scale(1.05)' : 'scale(1)',
+              boxShadow: isIsolated ? 'var(--shadow-md)' : 'none',
+              transition: 'all .2s ease'
+            }}
+            onClick={() => handlePillClick(s.id)}
+            title={isIsolated ? 'Click to show all' : `Show only ${s.id}s`}
+          >
+            <span>{s.icon}</span><span>{s.label}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -572,8 +611,12 @@ function TimeGrid({ days, events, activeCats, search, showWeekends, onOpenEvent,
                   const h=Math.max(dur/60*HOUR_H,22);
                   const w=`${100/ev._totalCols}%`;
                   const l=`${ev._col/ev._totalCols*100}%`;
+                  const isMatch=search&&ev.title.toLowerCase().includes(search.toLowerCase());
+                  const tgCls=['tg-event'];
+                  if(isMatch) tgCls.push('chip-match');
+                  else if(search) tgCls.push('chip-dim');
                   return (
-                    <div key={ev.id} className="tg-event" style={{top:`${top}px`,height:`${h}px`,left:l,width:w,'--chip-fg':fg,'--chip-bg':bg}} draggable={!ev.seeded} onDragStart={()=>{ draggedEventId.current=ev.id; }} onClick={(e)=>{ e.stopPropagation(); onOpenEvent(ev); }} onMouseEnter={(e)=>onHover&&onHover(ev,e)} onMouseLeave={()=>onHoverEnd&&onHoverEnd()} title={ev.title}>
+                    <div key={ev.id} className={tgCls.join(' ')} style={{top:`${top}px`,height:`${h}px`,left:l,width:w,'--chip-fg':fg,'--chip-bg':bg}} draggable={!ev.seeded} onDragStart={()=>{ draggedEventId.current=ev.id; }} onClick={(e)=>{ e.stopPropagation(); onOpenEvent(ev); }} onMouseEnter={(e)=>onHover&&onHover(ev,e)} onMouseLeave={()=>onHoverEnd&&onHoverEnd()} title={ev.title}>
                       <div className="tg-event-title">{ev.title}{ev.notify&&<span title={`Reminder: ${ev.notify} min before`} style={{fontSize:9,opacity:0.7,marginLeft:3}}>🔔</span>}</div>
                       {h>30&&<div className="tg-event-time">{fmtTime(ev.time,timezone)}{ev.endTime?` – ${fmtTime(ev.endTime,timezone)}`:''}</div>}
                     </div>
@@ -812,6 +855,25 @@ function MonthGrid({ viewDate, events, activeCats, search, weekStart, showWeeken
   );
 }
 
+// ─── Delete Confirm Modal ─────────────────────────────────────
+function DeleteConfirmModal({ title, onConfirm, onCancel }) {
+  return (
+    <div className="scrim" onClick={e=>{ if(e.target===e.currentTarget) onCancel(); }}>
+      <div className="modal" style={{width:'min(380px,calc(100vw - 32px))'}} role="dialog" aria-modal="true">
+        <div className="modal-head"><h2>Delete Event</h2><button className="iconbtn" onClick={onCancel}>{Icon.x}</button></div>
+        <div className="modal-body">
+          <p style={{margin:0,fontSize:14,color:'var(--ink-2)'}}>Delete <strong>"{title}"</strong>? This action cannot be undone.</p>
+        </div>
+        <div className="modal-foot">
+          <button className="btn" onClick={onCancel}>Cancel</button>
+          <div className="spacer"/>
+          <button className="btn danger" onClick={onConfirm}>{Icon.trash} Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Event modal ──────────────────────────────────────────────
 function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, timezone }) {
   const defaultDate=date||new Date();
@@ -826,11 +888,16 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
   const [conflicts, setConflicts]=useState([]);
   const [showConflict, setShowConflict]=useState(false);
   const [recurEditMode, setRecurEditMode]=useState(null);
+  const [confirmingDelete, setConfirmingDelete]=useState(false);
+  const [detailLevel, setDetailLevel]=useState('detailed');
+  const [viewMode, setViewMode]=useState('view');
   const isSeeded=event&&event.seeded;
   const isSmartsheet=event&&event.source==='smartsheet'; // read-only — never editable
+  const isPaylocity=event && (String(event.id).startsWith('paylocity') || (event.description && String(event.description).startsWith('Paylocity Time Off Report')));
   const isReadOnly=isSeeded||isSmartsheet;
   const up=(k,v)=>{ if(isReadOnly) return; setForm(f=>({...f,[k]:v})); };
   const cat=CATMAP[form.category]||CATMAP['personal'];
+  const emps=loadEmployees() || window.SDC_DATA?.DEFAULT_EMPLOYEES || [];
 
   const submit=(force=false)=>{
     if(!form.title.trim()) return;
@@ -916,6 +983,237 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
             </div>
             <div className="modal-foot"><div className="spacer"/><button className="btn primary" onClick={onClose}>Close</button></div>
           </React.Fragment>
+        ) : isSmartsheet ? (
+          <React.Fragment>
+            <div className="detail-head" style={{borderBottom:0,paddingBottom:0,display:'flex',alignItems:'center',gap:12}}>
+              <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
+                <span className="ss-badge" style={{background:ssPctColor(form.pctComplete),padding:'4px 8px',borderRadius:6,color:'#fff',fontWeight:700,textAlign:'center',fontSize:12}}>SS</span>
+                {getJobNum(form.sheetName) && <span className="ss-job-num" style={{background:'rgba(0,102,204,0.1)',color:'#0066CC',padding:'2px 6px',borderRadius:4,fontWeight:600,fontSize:11,textAlign:'center'}}>{getJobNum(form.sheetName)}</span>}
+              </div>
+              <div style={{flex:1}}>
+                <h3 className="detail-title" style={{margin:0}}>{form.title}</h3>
+                <div className="detail-when" style={{marginTop:4}}>{fmtDateLong(form.date)}{form.endDate&&!isSameDay(form.date,new Date(form.endDate))?` – ${fmtDateLong(new Date(form.endDate))}`:''}</div>
+              </div>
+            </div>
+
+            <div className="detail-body" style={{paddingTop:12}}>
+              <div className="detail-row">
+                <div className="k">Sheet Name</div>
+                <div style={{fontWeight:500,color:'var(--ink)'}}>{form.sheetName ? form.sheetName.replace(/^\d{3,6}[-–\s]*/,'').trim() : '—'}</div>
+              </div>
+              <div className="detail-row">
+                <div className="k">Job ID</div>
+                <div style={{fontWeight:600,color:'var(--ink)'}}>{getJobNum(form.sheetName) || '—'}</div>
+              </div>
+              <div className="detail-row">
+                <div className="k">Manager</div>
+                <div>{form.manager ? `👤 ${form.manager}` : '—'}</div>
+              </div>
+              <div className="detail-row">
+                <div className="k">Status</div>
+                <div style={{color:form.status?.toLowerCase().includes('complete')?'#1B8A3F':'var(--ink-2)',fontWeight:form.status?.toLowerCase().includes('complete')?600:400}}>
+                  {form.status ? `● ${form.status}` : '—'}
+                </div>
+              </div>
+              {form.pctComplete && (
+                <div className="detail-row">
+                  <div className="k">Progress</div>
+                  <div style={{display:'flex',alignItems:'center',gap:10,flex:1}}>
+                    <div style={{height:6,background:'var(--line)',borderRadius:3,overflow:'hidden',flex:1}}>
+                      <div style={{height:'100%',width:`${Math.min(parseInt(form.pctComplete)||0,100)}%`,background:ssPctColor(form.pctComplete),borderRadius:3}}/>
+                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:ssPctColor(form.pctComplete)}}>{form.pctComplete}</span>
+                  </div>
+                </div>
+              )}
+              <div className="detail-row">
+                <div className="k">Start Date</div>
+                <div>{fmtDateLong(form.date)}</div>
+              </div>
+              <div className="detail-row">
+                <div className="k">End Date</div>
+                <div>{form.endDate ? fmtDateLong(new Date(form.endDate)) : '—'}</div>
+              </div>
+              {form.time && (
+                <div className="detail-row">
+                  <div className="k">Time</div>
+                  <div>{fmtTime(form.time, timezone)}{form.endTime ? ` – ${fmtTime(form.endTime, timezone)}` : ''}</div>
+                </div>
+              )}
+              {form.duration && (
+                <div className="detail-row">
+                  <div className="k">Duration</div>
+                  <div>⏱ {form.duration}</div>
+                </div>
+              )}
+              {form.description && (
+                <div className="detail-row" style={{flexDirection:'column',alignItems:'flex-start',gap:6,marginTop:4}}>
+                  <div className="k">Description / Notes</div>
+                  <div style={{
+                    background:'var(--bg-elev)',
+                    padding:'12px 14px',
+                    borderRadius:8,
+                    width:'100%',
+                    fontSize:13,
+                    lineHeight:1.5,
+                    whiteSpace:'pre-wrap',
+                    border:'1px solid var(--line)',
+                    color:'var(--ink-2)',
+                    maxHeight:'200px',
+                    overflowY:'auto'
+                  }}>
+                    {form.description}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{margin:'0 20px 12px',padding:'10px 14px',background:'rgba(0,120,212,0.07)',border:'1px solid rgba(0,120,212,0.2)',borderRadius:8,display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#0066CC'}}>
+              <span className="ss-badge">SS</span>
+              <span>This task is synced from <strong>Smartsheet</strong> and is <strong>read-only</strong>. Edit it in Smartsheet to make changes.</span>
+            </div>
+
+            <div className="modal-foot">
+              <div className="spacer"/>
+              <button className="btn primary" onClick={onClose}>Close</button>
+            </div>
+          </React.Fragment>
+        ) : (isPaylocity && viewMode === 'view') ? (
+          <React.Fragment>
+            {(() => {
+              const data = {};
+              if (form.description) {
+                form.description.split('\n').forEach(line => {
+                  const clean = (prefix) => line.replace(prefix, '').trim();
+                  if (line.startsWith('Employee Number:')) data.empNo = clean('Employee Number:');
+                  else if (line.startsWith('Employee #:')) data.empNo = clean('Employee #:');
+                  else if (line.startsWith('Employee ID:')) data.empNo = clean('Employee ID:');
+                  else if (line.startsWith('Employee:')) data.employee = clean('Employee:');
+                  else if (line.startsWith('Type:')) data.type = clean('Type:');
+                  else if (line.startsWith('Hours:')) data.hours = clean('Hours:');
+                  else if (line.startsWith('Status:')) data.status = clean('Status:');
+                });
+              }
+              const isApproved = data.status?.toLowerCase().includes('approved');
+              const isPending  = data.status?.toLowerCase().includes('pending');
+              
+              let statusColor  = 'var(--ink-2)';
+              let statusBg     = 'var(--bg-elev)';
+              let statusBorder = '1px solid var(--line)';
+
+              if (isApproved) {
+                statusColor  = '#27AE60';
+                statusBg     = '#E8F8F5';
+                statusBorder = '1px solid #27AE60';
+              } else if (isPending) {
+                statusColor  = '#E67E22';
+                statusBg     = '#FDF5E6';
+                statusBorder = '1px solid #E67E22';
+              }
+
+              return (
+                <React.Fragment>
+                  <div className="detail-head" style={{borderBottom:0,paddingBottom:0,display:'flex',alignItems:'center',gap:12}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
+                      <span className="cat-pill active" style={{'--sw':'#27AE60','--sw-bg':'#E8F8F5',padding:'4px 8px',borderRadius:6,color:'#27AE60',fontWeight:700,textAlign:'center',fontSize:11,border:'1px solid #27AE60'}}>PTO</span>
+                    </div>
+                    <div style={{flex:1}}>
+                      <h3 className="detail-title" style={{margin:0}}>{form.title}</h3>
+                      <div className="detail-when" style={{marginTop:4}}>{fmtDateLong(form.date)}{form.endDate&&!isSameDay(form.date,new Date(form.endDate))?` – ${fmtDateLong(new Date(form.endDate))}`:''}</div>
+                    </div>
+                  </div>
+
+                  {/* ── Toggle ── */}
+                  <div style={{margin:'12px 20px 4px',display:'flex',gap:6,background:'var(--bg-elev)',padding:4,borderRadius:20,border:'1px solid var(--line)',width:'max-content'}}>
+                    {['Simple', 'Short', 'Detailed'].map(lvl => (
+                      <button
+                        key={lvl}
+                        type="button"
+                        className={`btn btn-sm`}
+                        style={{
+                          padding:'4px 16px',
+                          borderRadius:16,
+                          fontSize:12,
+                          fontWeight:600,
+                          border:'none',
+                          background:detailLevel===lvl.toLowerCase()?'#27AE60':'transparent',
+                          color:detailLevel===lvl.toLowerCase()?'#fff':'var(--ink-3)',
+                          cursor:'pointer',
+                          transition:'all 0.2s'
+                        }}
+                        onClick={()=>setDetailLevel(lvl.toLowerCase())}
+                      >
+                        {lvl}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="detail-body" style={{paddingTop:8}}>
+                    {/* Level 1: Simple View */}
+                    <div className="detail-row">
+                      <div className="k">Employee Name</div>
+                      <div style={{fontWeight:600,color:'var(--ink)'}}>{data.employee || '—'}</div>
+                    </div>
+                    <div className="detail-row">
+                      <div className="k">Start Date</div>
+                      <div>{fmtDateLong(form.date)}</div>
+                    </div>
+                    <div className="detail-row">
+                      <div className="k">End Date</div>
+                      <div>{form.endDate ? fmtDateLong(new Date(form.endDate)) : fmtDateLong(form.date)}</div>
+                    </div>
+
+                    {/* Level 2: Short View */}
+                    {(detailLevel === 'short' || detailLevel === 'detailed') && (
+                      <React.Fragment>
+                        <div className="detail-row">
+                          <div className="k">Employee Number</div>
+                          <div>{data.empNo || '—'}</div>
+                        </div>
+                        <div className="detail-row">
+                          <div className="k">Hours</div>
+                          <div style={{fontWeight:600}}>{data.hours ? `⏱ ${data.hours}` : '—'}</div>
+                        </div>
+                        <div className="detail-row">
+                          <div className="k">Status</div>
+                          <span style={{
+                            background: statusBg,
+                            color: statusColor,
+                            padding: '4px 12px',
+                            borderRadius: 12,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            border: statusBorder
+                          }}>
+                            {data.status || 'Unknown'}
+                          </span>
+                        </div>
+                      </React.Fragment>
+                    )}
+
+                    {/* Level 3: Detailed View */}
+                    {detailLevel === 'detailed' && (
+                      <div className="detail-row">
+                        <div className="k">Description</div>
+                        <div style={{fontWeight:500,color:'var(--ink-2)'}}>{data.type || 'Time Off'}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="modal-foot">
+                    <button className="btn danger" onClick={()=>setConfirmingDelete(true)}>{Icon.trash} Delete</button>
+                    <button className="btn btn-sm" onClick={()=>{ const newPinned = !form.pinned; setForm(f=>({...f, pinned: newPinned})); onSave({...form, pinned: newPinned}); }} title="Pin this event" style={{color:form.pinned?'#F39C12':'var(--ink-3)',borderColor:form.pinned?'#F39C12':'var(--line-strong)'}}>
+                      {form.pinned ? '📌 Pinned' : '📌 Pin'}
+                    </button>
+                    <div className="spacer"/>
+                    <button className="btn" onClick={()=>setViewMode('edit')} style={{display:'flex',alignItems:'center',gap:4}}>✏️ Edit</button>
+                    <button className="btn primary" onClick={onClose}>Close</button>
+                  </div>
+                  {confirmingDelete&&<DeleteConfirmModal title={form.title} onConfirm={()=>onDelete(form.id)} onCancel={()=>setConfirmingDelete(false)}/>}
+                </React.Fragment>
+              );
+            })()}
+          </React.Fragment>
         ) : (
           <React.Fragment>
             <div className="modal-body">
@@ -992,7 +1290,15 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
               <div className="row">
                 <div className="field">
                   <label>Attendees</label>
-                  <input className="input" placeholder="Comma-separated names" value={form.attendees||''} onChange={e=>up('attendees',e.target.value)}/>
+                  <input className="input" list="employees-list" placeholder="Comma-separated names" value={form.attendees||''} onChange={e=>up('attendees',e.target.value)}/>
+                  <datalist id="employees-list">
+                    {emps.map(emp => {
+                      const emailStr = emp.email || `${emp.name.toLowerCase().replace(/\s+/g, '.')}@sdcautomation.com`;
+                      return (
+                        <option key={emp.name} value={emailStr}>{emp.name} ({emailStr})</option>
+                      );
+                    })}
+                  </datalist>
                 </div>
                 <div className="field">
                   <label>Custom color</label>
@@ -1007,6 +1313,12 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
                 <label>Description</label>
                 <textarea className="input" rows="3" placeholder="Add notes…" value={form.description||''} onChange={e=>up('description',e.target.value)}/>
               </div>
+
+              {mode==='edit'&&event?.creatorName&&(
+                <div style={{fontSize:11,color:'var(--ink-3)',padding:'0 0 4px',display:'flex',alignItems:'center',gap:4}}>
+                  {Icon.users} Created by <strong style={{color:'var(--ink-2)'}}>{event.creatorName}</strong>
+                </div>
+              )}
             </div>
 
             {isSmartsheet && (
@@ -1016,7 +1328,7 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
               </div>
             )}
             <div className="modal-foot">
-              {mode==='edit'&&!isReadOnly&&<button className="btn danger" onClick={()=>onDelete(form.id)}>{Icon.trash} Delete</button>}
+              {mode==='edit'&&!isReadOnly&&<button className="btn danger" onClick={()=>setConfirmingDelete(true)}>{Icon.trash} Delete</button>}
               {!isReadOnly&&<button className="btn btn-sm" onClick={()=>up('pinned',!form.pinned)} title="Pin this event" style={{color:form.pinned?'#F39C12':'var(--ink-3)',borderColor:form.pinned?'#F39C12':'var(--line-strong)'}}>
                 {form.pinned ? '📌 Pinned' : '📌 Pin'}
               </button>}
@@ -1024,6 +1336,7 @@ function EventModal({ mode, event, date, allEvents, onClose, onSave, onDelete, t
               <button className="btn" onClick={onClose}>{isReadOnly?'Close':'Cancel'}</button>
               {!isReadOnly&&<button className="btn primary" onClick={()=>submit()} disabled={!form.title.trim()}>{mode==='edit'?'Save changes':'Create event'}</button>}
             </div>
+            {confirmingDelete&&<DeleteConfirmModal title={form.title} onConfirm={()=>onDelete(form.id)} onCancel={()=>setConfirmingDelete(false)}/>}
           </React.Fragment>
         )}
       </div>
@@ -1143,73 +1456,108 @@ function DayModal({ date, events, onClose, onOpenEvent, onNewOnDate }) {
 // ─── Employee directory modal ─────────────────────────────────
 function EmployeeModal({ employees, onSave, onClose }) {
   const [list, setList]=useState(()=>employees.map((e,i)=>({...e,_id:i})));
-  const [editing, setEditing]=useState(null); // {_id,name,role,bMonth,bDay}
-  const [form, setForm]=useState({name:'',role:'',bMonth:1,bDay:1});
-  const roles=['Engineering','Product','Design','Operations','Data','Sales','People','Marketing','Finance','Legal','Other'];
+  const [editing, setEditing]=useState(null); 
+  const [form, setForm]=useState({name:'',role:'',email:'',bMonth:1,bDay:1,id:''});
 
-  const startEdit=(e)=>{ setEditing(e._id); setForm({name:e.name,role:e.role,bMonth:e.bMonth,bDay:e.bDay}); };
+  const startEdit=(e)=>{ 
+    setEditing(e._id); 
+    setForm({name:e.name,role:e.role,email:e.email||'',bMonth:e.bMonth||1,bDay:e.bDay||1,id:e.id||''}); 
+  };
+  
   const saveEdit=()=>{
     if(!form.name.trim()) return;
     setList(l=>l.map(e=>e._id===editing?{...e,...form,name:form.name.trim()}:e));
     setEditing(null);
   };
+  
   const addNew=()=>{
     if(!form.name.trim()) return;
     const _id=Date.now();
     setList(l=>[...l,{...form,name:form.name.trim(),_id}]);
-    setForm({name:'',role:'Engineering',bMonth:1,bDay:1});
+    setForm({name:'',role:'',email:'',bMonth:1,bDay:1,id:''});
     setEditing(null);
   };
+  
   const del=(id)=>setList(l=>l.filter(e=>e._id!==id));
   const saveAll=()=>onSave(list.map(({_id,...rest})=>rest));
 
   return (
     <div className="scrim" onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div className="modal emp-modal" role="dialog" aria-modal="true">
+      <div className="modal emp-modal" role="dialog" aria-modal="true" style={{width:'min(800px, calc(100vw - 32px))'}}>
         <div className="modal-head"><h2>Employee Directory</h2><button className="iconbtn" onClick={onClose} aria-label="Close">{Icon.x}</button></div>
-        <div className="modal-body" style={{gap:8,maxHeight:'50vh',overflowY:'auto'}}>
-          {list.map(e=>(
-            <div key={e._id} className="emp-row">
-              {editing===e._id ? (
-                <div className="emp-edit-form">
-                  <input className="input" placeholder="Name" value={form.name} onChange={x=>setForm(f=>({...f,name:x.target.value}))} autoFocus/>
-                  <select className="input" value={form.role} onChange={x=>setForm(f=>({...f,role:x.target.value}))}>{roles.map(r=><option key={r}>{r}</option>)}</select>
-                  <div className="row" style={{gap:8}}>
-                    <select className="input" value={form.bMonth} onChange={x=>setForm(f=>({...f,bMonth:+x.target.value}))}>
-                      {MONTHS.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
-                    </select>
-                    <input className="input" type="number" min="1" max="31" placeholder="Day" value={form.bDay} onChange={x=>setForm(f=>({...f,bDay:+x.target.value}))} style={{width:70}}/>
-                  </div>
-                  <div style={{display:'flex',gap:6}}>
-                    <button className="btn primary btn-sm" onClick={saveEdit}>Save</button>
-                    <button className="btn btn-sm" onClick={()=>setEditing(null)}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <React.Fragment>
-                  <div className="emp-info">
-                    <div className="emp-name">{e.name}</div>
-                    <div className="emp-meta">{e.role} · 🎂 {MONTHS_SHORT[e.bMonth-1]} {e.bDay}</div>
-                  </div>
-                  <div style={{display:'flex',gap:4}}>
-                    <button className="iconbtn btn-sm" onClick={()=>startEdit(e)} title="Edit">{Icon.edit}</button>
-                    <button className="iconbtn btn-sm danger" onClick={()=>del(e._id)} title="Delete">{Icon.trash}</button>
-                  </div>
-                </React.Fragment>
-              )}
-            </div>
-          ))}
+        
+        <div className="modal-body" style={{padding:0,maxHeight:'50vh',overflowY:'auto'}}>
+          <table className="emp-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Job Title</th>
+                <th>Email</th>
+                <th>Birthday</th>
+                <th style={{textAlign:'right'}}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map(e=>(
+                <tr key={e._id}>
+                  {editing===e._id ? (
+                    <td colSpan={6}>
+                      <div className="emp-edit-form" style={{padding:'12px',background:'var(--bg-tint)',borderRadius:6,margin:'4px 0',display:'flex',flexDirection:'column',gap:8}}>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                          <input className="input" placeholder="Name" value={form.name} onChange={x=>setForm(f=>({...f,name:x.target.value}))} autoFocus/>
+                          <input className="input" placeholder="Job Title" value={form.role} onChange={x=>setForm(f=>({...f,role:x.target.value}))}/>
+                          <input className="input" placeholder="Employee ID" value={form.id||''} onChange={x=>setForm(f=>({...f,id:x.target.value}))}/>
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                          <input className="input" placeholder="Email" value={form.email||''} onChange={x=>setForm(f=>({...f,email:x.target.value}))}/>
+                          <select className="input" value={form.bMonth} onChange={x=>setForm(f=>({...f,bMonth:+x.target.value}))}>
+                            {MONTHS.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
+                          </select>
+                          <input className="input" type="number" min="1" max="31" placeholder="Day" value={form.bDay} onChange={x=>setForm(f=>({...f,bDay:+x.target.value}))}/>
+                        </div>
+                        <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                          <button className="btn primary btn-sm" onClick={saveEdit}>Save</button>
+                          <button className="btn btn-sm" onClick={()=>setEditing(null)}>Cancel</button>
+                        </div>
+                      </div>
+                    </td>
+                  ) : (
+                    <React.Fragment>
+                      <td style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--ink-3)'}}>{e.id || '—'}</td>
+                      <td style={{fontWeight:600}}>{e.name}</td>
+                      <td>{e.role}</td>
+                      <td style={{color:'var(--ink-3)',fontSize:12}}>{e.email || '—'}</td>
+                      <td>{e.bMonth && e.bDay ? `${MONTHS_SHORT[e.bMonth-1]} ${e.bDay}` : '—'}</td>
+                      <td>
+                        <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
+                          <button className="iconbtn btn-sm" onClick={()=>startEdit(e)} title="Edit">{Icon.edit}</button>
+                          <button className="iconbtn btn-sm danger" onClick={()=>del(e._id)} title="Delete">{Icon.trash}</button>
+                        </div>
+                      </td>
+                    </React.Fragment>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+
         <div className="emp-add">
           <div className="section-label" style={{padding:'0 0 8px',color:'var(--ink-3)'}}>Add new employee</div>
-          <input className="input" placeholder="Full name" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/>
-          <div className="row" style={{marginTop:6,gap:8}}>
-            <select className="input" value={form.role} onChange={e=>setForm(f=>({...f,role:e.target.value}))}>{roles.map(r=><option key={r}>{r}</option>)}</select>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+            <input className="input" placeholder="Full name" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/>
+            <input className="input" placeholder="Job Title" value={form.role} onChange={e=>setForm(f=>({...f,role:e.target.value}))}/>
+            <input className="input" placeholder="Employee ID" value={form.id||''} onChange={e=>setForm(f=>({...f,id:e.target.value}))}/>
+          </div>
+          <div className="row" style={{marginTop:6,gap:8,gridTemplateColumns:'1fr 1fr 1fr'}}>
+            <input className="input" placeholder="Email" value={form.email||''} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/>
             <select className="input" value={form.bMonth} onChange={e=>setForm(f=>({...f,bMonth:+e.target.value}))}>{MONTHS.map((m,i)=><option key={i} value={i+1}>{m}</option>)}</select>
-            <input className="input" type="number" min="1" max="31" value={form.bDay} onChange={e=>setForm(f=>({...f,bDay:+e.target.value}))} style={{width:70}} placeholder="Day"/>
+            <input className="input" type="number" min="1" max="31" value={form.bDay} onChange={e=>setForm(f=>({...f,bDay:+e.target.value}))} placeholder="Day"/>
           </div>
           <button className="btn primary" style={{marginTop:8,width:'100%'}} onClick={addNew} disabled={!form.name.trim()}>{Icon.plus} Add employee</button>
         </div>
+
         <div className="modal-foot">
           <div className="spacer"/>
           <button className="btn" onClick={onClose}>Cancel</button>
@@ -1221,7 +1569,7 @@ function EmployeeModal({ employees, onSave, onClose }) {
 }
 
 // ─── Import / Export modal ────────────────────────────────────
-function ImportExportModal({ allEvents, userEvents, onImport, onClose }) {
+function ImportExportModal({ allEvents, userEvents, onImport, onClearPaylocity, onClose }) {
   const [tab, setTab]=useState('export');
   const [importText, setImportText]=useState('');
   const [importResult, setImportResult]=useState(null);
@@ -1249,19 +1597,183 @@ function ImportExportModal({ allEvents, userEvents, onImport, onClose }) {
   const handleFile=(e)=>{
     const file=e.target.files[0]; if(!file) return;
     const reader=new FileReader();
+    const isExcel = file.name.endsWith('.xls') || file.name.endsWith('.xlsx');
+
     reader.onload=(ev)=>{
-      const text=ev.target.result;
       try {
-        if(file.name.endsWith('.ics')) {
-          const parsed=parseICS(text);
-          setImportResult({events:parsed,type:'ics'});
-        } else if(file.name.endsWith('.json')) {
-          const parsed=JSON.parse(text).map(e=>({...e,date:new Date(e.date),endDate:e.endDate?new Date(e.endDate):null}));
-          setImportResult({events:parsed,type:'json'});
+        let parsedEvents = [];
+        if (isExcel) {
+          const data = new Uint8Array(ev.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          
+          if (rows.length < 2) throw new Error('Excel sheet is empty.');
+          
+          let headerIdx = -1;
+          let headers = [];
+          for (let r = 0; r < Math.min(rows.length, 30); r++) {
+            if (!rows[r]) continue;
+            const candidate = Array.from(rows[r] || []).map(h => String(h || '').toLowerCase());
+            const hasName = candidate.some(h => h.includes('name') || h.includes('employee'));
+            const hasDate = candidate.some(h => h.includes('start') || h.includes('date'));
+            if (hasName && hasDate) {
+              headerIdx = r;
+              headers = candidate;
+              break;
+            }
+          }
+          
+          if (headerIdx === -1) {
+            throw new Error('Could not locate the header row in the Excel sheet.');
+          }
+
+          let nameIdx = headers.findIndex(h => h && typeof h === 'string' && h.includes('name'));
+          if (nameIdx === -1) {
+            nameIdx = headers.findIndex(h => h && typeof h === 'string' && h.includes('employee'));
+          }
+          const empNoIdx = headers.findIndex(h => h && typeof h === 'string' && (h.includes('number') || h.includes('emp no') || h.includes('#') || h.includes('id')));
+          const startIdx = headers.findIndex(h => h && typeof h === 'string' && (h.includes('start') || h.includes('date') || h.includes('from')));
+          const endIdx = headers.findIndex(h => h && typeof h === 'string' && (h.includes('end') || h.includes('finish') || h.includes('to') || h.includes('thru')));
+          const typeIdx = headers.findIndex(h => h && typeof h === 'string' && (h.includes('type') || h.includes('category') || h.includes('pto') || h.includes('vacation') || h.includes('code')));
+          const hoursIdx = headers.findIndex(h => h && typeof h === 'string' && h.includes('hours'));
+          const statusIdx = headers.findIndex(h => h && typeof h === 'string' && h.includes('status'));
+          const descIdx = headers.findIndex(h => h && typeof h === 'string' && h.includes('description'));
+          
+          for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || !row[nameIdx] || !row[startIdx]) continue;
+            
+            const name = String(row[nameIdx]);
+            const empNoStr = empNoIdx !== -1 && row[empNoIdx] ? String(row[empNoIdx]) : '';
+            const startRaw = row[startIdx];
+            const endRaw = endIdx !== -1 ? row[endIdx] : startRaw;
+            
+            let typeStr = 'Time Off';
+            if (descIdx !== -1 && row[descIdx]) typeStr = String(row[descIdx]);
+            else if (typeIdx !== -1 && row[typeIdx]) typeStr = String(row[typeIdx]);
+            
+            const hoursStr = hoursIdx !== -1 && row[hoursIdx] ? `${row[hoursIdx]} hrs` : '';
+            const statusStr = statusIdx !== -1 && row[statusIdx] ? String(row[statusIdx]) : '';
+            
+            let startDate = new Date(startRaw);
+            let startTimeStr = '';
+            let endTimeStr = '';
+            let isAllDay = true;
+
+            if (typeof startRaw === 'number') {
+              const daysOnly = Math.floor(startRaw);
+              const baseDate = new Date(1899, 11, 30);
+              startDate = new Date(baseDate.getTime() + daysOnly * 86400000);
+              
+              const fraction = startRaw - daysOnly;
+              if (fraction > 0.0001) {
+                isAllDay = false;
+                const totalMs = Math.round(fraction * 86400000);
+                const hrs = Math.floor(totalMs / 3600000);
+                const mins = Math.floor((totalMs % 3600000) / 60000);
+                startTimeStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+              }
+            }
+            if (isNaN(startDate.getTime())) continue;
+
+            if (typeof endRaw === 'number') {
+              const daysOnly = Math.floor(endRaw);
+              const fraction = endRaw - daysOnly;
+              if (fraction > 0.0001) {
+                const totalMs = Math.round(fraction * 86400000);
+                const hrs = Math.floor(totalMs / 3600000);
+                const mins = Math.floor((totalMs % 3600000) / 60000);
+                endTimeStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+              }
+            }
+            
+            const fullTitle = [
+              name,
+              typeStr ? `(${typeStr})` : '',
+              hoursStr ? `[${hoursStr}]` : '',
+              statusStr ? `{${statusStr}}` : ''
+            ].filter(Boolean).join(' ');
+
+            parsedEvents.push({
+              id: `paylocity-xls-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+              title: fullTitle,
+              date: startDate,
+              endDate: null,
+              allDay: isAllDay,
+              time: startTimeStr || null,
+              endTime: endTimeStr || null,
+              category: 'vacation',
+              description: `Paylocity Time Off Report\nEmployee: ${name}\nEmployee Number: ${empNoStr}\nType: ${typeStr}\nHours: ${hoursStr}\nStatus: ${statusStr}`,
+            });
+          }
+          setImportResult({events:parsedEvents, type:'xls'});
+
+        } else {
+          const text=ev.target.result;
+          if(file.name.endsWith('.ics')) {
+            const parsed=parseICS(text);
+            setImportResult({events:parsed,type:'ics'});
+          } else if(file.name.endsWith('.json')) {
+            const parsed=JSON.parse(text).map(e=>({...e,date:new Date(e.date),endDate:e.endDate?new Date(e.endDate):null}));
+            setImportResult({events:parsed,type:'json'});
+          } else if(file.name.endsWith('.csv')) {
+            const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+            const headers = rows[0].map(h => h.toLowerCase());
+            let nameIdx = headers.findIndex(h => h.includes('name'));
+            if (nameIdx === -1) nameIdx = headers.findIndex(h => h.includes('employee'));
+            const empNoIdx = headers.findIndex(h => h.includes('number') || h.includes('emp no') || h.includes('#') || h.includes('id'));
+            const startIdx = headers.findIndex(h => h.includes('start') || h.includes('date') || h.includes('from'));
+            const endIdx = headers.findIndex(h => h.includes('end') || h.includes('finish') || h.includes('to') || h.includes('thru'));
+            const typeIdx = headers.findIndex(h => h.includes('type') || h.includes('category') || h.includes('pto') || h.includes('vacation') || h.includes('code'));
+            
+            if (nameIdx === -1 || startIdx === -1) throw new Error('CSV headers missing.');
+            
+            for (let i = 1; i < rows.length; i++) {
+              const row = rows[i];
+              if (row.length < 2 || !row[nameIdx] || !row[startIdx]) continue;
+              const name = row[nameIdx];
+              const empNoStr = empNoIdx !== -1 && row[empNoIdx] ? String(row[empNoIdx]) : '';
+              const startRaw = row[startIdx];
+              const endRaw = endIdx !== -1 ? row[endIdx] : startRaw;
+              let typeStr = 'Time Off';
+              if (descIdx !== -1 && row[descIdx]) typeStr = String(row[descIdx]);
+              else if (typeIdx !== -1 && row[typeIdx]) typeStr = String(row[typeIdx]);
+              
+              const hoursStr = hoursIdx !== -1 && row[hoursIdx] ? `${row[hoursIdx]} hrs` : '';
+              const statusStr = statusIdx !== -1 && row[statusIdx] ? String(row[statusIdx]) : '';
+              
+              const startDate = new Date(startRaw);
+              if (isNaN(startDate.getTime())) continue;
+
+              const fullTitle = [
+                name,
+                typeStr ? `(${typeStr})` : '',
+                hoursStr ? `[${hoursStr}]` : '',
+                statusStr ? `{${statusStr}}` : ''
+              ].filter(Boolean).join(' ');
+
+              parsedEvents.push({
+                id: `paylocity-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+                title: fullTitle,
+                date: startDate,
+                endDate: null,
+                allDay: true,
+                category: 'vacation',
+                description: `Paylocity Time Off Report\nEmployee: ${name}\nEmployee Number: ${empNoStr}\nType: ${typeStr}\nHours: ${hoursStr}\nStatus: ${statusStr}`,
+              });
+            }
+            setImportResult({events:parsedEvents, type:'csv'});
+          }
         }
       } catch(err) { alert('Could not parse file: '+err.message); }
     };
-    reader.readAsText(file);
+
+    if (isExcel) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   const doImport=()=>{
@@ -1301,8 +1813,8 @@ function ImportExportModal({ allEvents, userEvents, onImport, onClose }) {
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
               <div className="import-drop" onClick={()=>fileRef.current.click()}>
                 <div>{Icon.upload}</div>
-                <div>Click to choose a .ics or .json file</div>
-                <input ref={fileRef} type="file" accept=".ics,.json" style={{display:'none'}} onChange={handleFile}/>
+                <div>Click to choose a .ics, .json, .csv, or .xls/.xlsx Paylocity report</div>
+                <input ref={fileRef} type="file" accept=".ics,.json,.csv,.xls,.xlsx" style={{display:'none'}} onChange={handleFile}/>
               </div>
               {importResult&&(
                 <div className="import-preview">
@@ -1317,6 +1829,9 @@ function ImportExportModal({ allEvents, userEvents, onImport, onClose }) {
           )}
         </div>
         <div className="modal-foot">
+          {userEvents.some(ev => String(ev.id).includes('paylocity')) && (
+            <button className="btn" onClick={onClearPaylocity} style={{ color: '#D96A4A', borderColor: '#D96A4A' }}>🗑 Clear Paylocity</button>
+          )}
           <div className="spacer"/>
           <button className="btn" onClick={onClose}>Close</button>
           {tab==='import'&&<button className="btn primary" onClick={doImport} disabled={!importResult}>{Icon.upload} Import events</button>}
@@ -1429,7 +1944,7 @@ function Resizer({ width, onChange }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────
-const SHAPES = { holiday:'★', payday:'●', birthday:'♥', meeting:'■', company:'▲', deadline:'◆', personal:'○' };
+const SHAPES = { holiday:'★', payday:'●', birthday:'♥', meeting:'■', company:'▲', deadline:'◆', personal:'○', vacation:'🌴' };
 
 // ─── Birthday Spotlight ───────────────────────────────────────
 function BirthdaySpotlight({ birthdays }) {
@@ -1457,7 +1972,7 @@ function BirthdaySpotlight({ birthdays }) {
   );
 }
 
-function Sidebar({ viewDate, setViewDate, allEvents, activeCats, setActiveCats, search, setSearch, onNewEvent, onOpenEvent, weekStart, onOpenDirectory, onOpenImportExport, onUndo, onRedo, canUndo, canRedo, myEventsOnly, setMyEventsOnly, authUser, onSignOut, appVersion }) {
+function Sidebar({ viewDate, setViewDate, allEvents, activeCats, setActiveCats, search, setSearch, onNewEvent, onOpenEvent, weekStart, onOpenDirectory, onOpenImportExport, onUndo, onRedo, canUndo, canRedo, myEventsOnly, setMyEventsOnly, authUser, onSignOut, appVersion, prefs, setPrefs }) {
   const [collapsed, setCollapsed]=useState({mini:false,cats:false,upcoming:false});
 
   const eventsByDay=useMemo(()=>{
@@ -1598,6 +2113,9 @@ function Sidebar({ viewDate, setViewDate, allEvents, activeCats, setActiveCats, 
         <div className="sidebar-tools">
           <button className="tool-btn" onClick={onOpenDirectory} title="Employee Directory">{Icon.users} Directory</button>
           <button className="tool-btn" onClick={onOpenImportExport} title="Import / Export">{Icon.download} Import/Export</button>
+          <button className="tool-btn" onClick={() => setPrefs(p => ({ ...p, theme: (prefs?.theme === 'dark') ? 'light' : 'dark' }))} title={prefs?.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+            {prefs?.theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+          </button>
           <button className={`tool-btn ${!canUndo?'disabled':''}`} onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">{Icon.undo}</button>
           <button className={`tool-btn ${!canRedo?'disabled':''}`} onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">{Icon.redo}</button>
         </div>
@@ -1953,7 +2471,7 @@ function SmartsheetPanel({ onClose, onSync, currentEvents }) {
         <div className="modal ss-connect-modal">
           <div className="modal-head">
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:22 }}>📊</span>
+              <span style={{ display:'flex', alignItems:'center' }}>{Icon.smartsheet}</span>
               <h2 style={{ margin:0 }}>Connect Smartsheet</h2>
             </div>
             <button className="iconbtn" onClick={onClose}>{Icon.x}</button>
@@ -2007,7 +2525,7 @@ function SmartsheetPanel({ onClose, onSync, currentEvents }) {
 
         <div className="modal-head">
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:22 }}>📊</span>
+            <span style={{ display:'flex', alignItems:'center' }}>{Icon.smartsheet}</span>
             <h2 style={{ margin:0 }}>Smartsheet Sync</h2>
           </div>
           <button className="iconbtn" onClick={onClose}>{Icon.x}</button>
@@ -2110,6 +2628,24 @@ function SmartsheetPanel({ onClose, onSync, currentEvents }) {
   );
 }
 
+// ─── Error Boundary ───────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('[SDC Calendar Error]', error, info.componentStack); }
+  render() {
+    if (this.state.error) return (
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',gap:16,padding:32,textAlign:'center'}}>
+        <div style={{fontSize:48}}>⚠️</div>
+        <h2 style={{margin:0,fontSize:20,color:'var(--ink)'}}>Something went wrong</h2>
+        <p style={{color:'var(--ink-3)',maxWidth:440,lineHeight:1.5,margin:0}}>{this.state.error.message}</p>
+        <button className="btn primary" onClick={()=>{ this.setState({error:null}); window.location.reload(); }}>Reload Calendar</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 // ─── App ──────────────────────────────────────────────────────
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "accent":"#0066CC","theme":"light","weekStart":1,"density":"normal","showWeekends":true,"sidebarWidth":300,"timezone":"","showWeekNumbers":false
@@ -2146,6 +2682,7 @@ function App() {
 
 // ─── CalendarApp — full calendar UI ───────────────────────────
 function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
+  const [serverOnline, setServerOnline] = useState(true);
   const [adminOpen, setAdminOpen] = useState(false);
   const [ssOpen,    setSsOpen]    = useState(false);
   const [ssEvents,  setSsEvents]  = useState(() => { try { return JSON.parse(localStorage.getItem('sdc_ss_events') || '[]'); } catch { return []; } });
@@ -2172,9 +2709,27 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
   const [appVersion, setAppVersion]=useState(APP_VERSION);
   useEffect(()=>{ if(window.electronAPI) window.electronAPI.getVersion().then(v=>{ if(v) setAppVersion(v); }); },[]);
   const [contextMenu, setContextMenu]=useState(null);
+  const [deleteConfirm, setDeleteConfirm]=useState(null); // {id, title}
   const [userMenuOpen, setUserMenuOpen]=useState(false);
   const userMenuRef=useRef(null);
   const hoverTimerRef=useRef(null);
+
+  useEffect(() => {
+    if (LOCAL_MODE) return;
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+    fetch(`${API_URL}/api/events`, { headers })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const mapped = data.map(e => ({
+            ...e,
+            date: new Date(e.date + 'T00:00:00'),
+            endDate: e.endDate ? new Date(e.endDate + 'T00:00:00') : null
+          }));
+          setUserEventsRaw(mapped);
+        }
+      }).catch(console.error);
+  }, [authToken]);
 
   const savedPrefs=loadPrefs();
   const [prefs, setPrefs]=useState({...TWEAK_DEFAULTS,...savedPrefs});
@@ -2214,8 +2769,21 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
   // Persist
   useEffect(()=>{ savePrefs(prefs); },[prefs]);
   useEffect(()=>{ localStorage.setItem('sdc_view_date',viewDate.toISOString()); },[viewDate]);
-  useEffect(()=>{ saveUserEvents(userEvents); },[userEvents]);
+  useEffect(()=>{ if(!saveUserEvents(userEvents)) setToast('⚠️ Events not saved — browser storage may be full'); },[userEvents]);
   useEffect(()=>{ localStorage.setItem('sdc_ss_events', JSON.stringify(ssEvents)); },[ssEvents]);
+
+  // Server health check — poll every 30s, show banner when offline
+  useEffect(()=>{
+    if(LOCAL_MODE) return;
+    const check=()=>{
+      fetch(`${API_URL}/api/health`,{signal:AbortSignal.timeout(5000)})
+        .then(()=>setServerOnline(true))
+        .catch(()=>setServerOnline(false));
+    };
+    check();
+    const id=setInterval(check,30000);
+    return ()=>clearInterval(id);
+  },[]);
 
   // Close user menu on outside click
   useEffect(()=>{
@@ -2315,29 +2883,146 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
       else if(e.key.toLowerCase()==='n'&&!modal) setModal({mode:'new',date:viewDate});
       else if(e.key.toLowerCase()==='m') setViewMode('month');
       else if(e.key.toLowerCase()==='w') setViewMode('week');
-      else if(e.key.toLowerCase()==='d') setViewMode('day');
+      else if(e.key.toLowerCase()==='d') { setViewMode('day'); setViewDate(new Date()); }
       else if(e.key==='1') setViewMode('month');
       else if(e.key==='2') setViewMode('week');
-      else if(e.key==='3') setViewMode('day');
+      else if(e.key==='3') { setViewMode('day'); setViewDate(new Date()); }
     };
     window.addEventListener('keydown',h);
     return ()=>window.removeEventListener('keydown',h);
   },[modal,viewDate,viewMode,undo,redo]);
 
-  const handleSave=(ev)=>{
-    setUserEvents(prev=>{ const i=prev.findIndex(x=>x.id===ev.id); if(i>=0){ const c=[...prev]; c[i]=ev; return c; } return [...prev,ev]; });
-    setModal(null);
-    requestNotifPermission();
+  const handleSave=async (ev)=>{
+    if (LOCAL_MODE) {
+      setUserEvents(prev=>{ const i=prev.findIndex(x=>x.id===ev.id); if(i>=0){ const c=[...prev]; c[i]=ev; return c; } return [...prev,ev]; });
+      setModal(null);
+      requestNotifPermission();
+      return;
+    }
+    const isNew = !userEvents.some(x => x.id === ev.id);
+    const url = isNew ? `${API_URL}/api/events` : `${API_URL}/api/events/${ev.id}`;
+    const method = isNew ? 'POST' : 'PUT';
+    try {
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          ...ev,
+          date: ev.date.toISOString().split('T')[0],
+          endDate: ev.endDate ? ev.endDate.toISOString().split('T')[0] : null
+        })
+      });
+      const r = await fetch(`${API_URL}/api/events`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const data = await r.json();
+      if (Array.isArray(data)) {
+        setUserEventsRaw(data.map(e => ({ ...e, date: new Date(e.date + 'T00:00:00'), endDate: e.endDate ? new Date(e.endDate + 'T00:00:00') : null })));
+      }
+      setModal(null);
+      requestNotifPermission();
+    } catch (e) {
+      setToast('Failed to save event to server.');
+    }
   };
-  const handleDelete=(id)=>{ setUserEvents(prev=>prev.filter(x=>x.id!==id)); setModal(null); };
+
+  const handleDelete=async (id)=>{
+    if (LOCAL_MODE) {
+      setUserEvents(prev=>prev.filter(x=>x.id!==id));
+      setModal(null);
+      return;
+    }
+    try {
+      await fetch(`${API_URL}/api/events/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${authToken}` } });
+      setUserEventsRaw(prev => prev.filter(x => x.id !== id));
+      setModal(null);
+    } catch (e) {
+      setToast('Failed to delete event.');
+    }
+  };
   const handleDrop=(evId, newDate)=>{
     setUserEvents(prev=>prev.map(ev=>{ if(ev.id!==evId) return ev; const nd=new Date(newDate); if(ev.endDate){ const dur=ev.endDate-ev.date; return {...ev,date:nd,endDate:new Date(nd.getTime()+dur)}; } return {...ev,date:nd}; }));
     setToast('Event moved');
   };
-  const handleImport=(events)=>{
-    setUserEvents(prev=>[...prev,...events]);
-    setToast(`${events.length} events imported`);
+  const handleImport = async (events) => {
+    if (LOCAL_MODE) {
+      setUserEvents(prev=>[
+        ...prev.filter(ev=>!String(ev.id).includes('paylocity')),
+        ...events
+      ]);
+      setToast(`${events.length} events imported (local)`);
+      return;
+    }
+
+    try {
+      setToast(`Saving ${events.length} events to database...`);
+      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` };
+      
+      // 1. Fetch all current events from backend
+      const r = await fetch(`${API_URL}/api/events`, { headers });
+      const current = await r.json();
+      
+      // 2. Delete old Paylocity records sequentially
+      if (Array.isArray(current)) {
+        const toDelete = current.filter(ev => String(ev.id).includes('paylocity'));
+        for (const ev of toDelete) {
+          await fetch(`${API_URL}/api/events/${ev.id}`, { method: 'DELETE', headers });
+        }
+      }
+      
+      // 3. POST new events
+      for (const ev of events) {
+        await fetch(`${API_URL}/api/events`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            ...ev,
+            date: ev.date instanceof Date ? ev.date.toISOString().split('T')[0] : String(ev.date),
+            endDate: ev.endDate ? (ev.endDate instanceof Date ? ev.endDate.toISOString().split('T')[0] : String(ev.endDate)) : null
+          })
+        });
+      }
+      
+      // 4. Reload userEvents state from backend
+      const r2 = await fetch(`${API_URL}/api/events`, { headers });
+      const finalData = await r2.json();
+      if (Array.isArray(finalData)) {
+        setUserEventsRaw(finalData.map(e => ({ ...e, date: new Date(e.date + 'T00:00:00'), endDate: e.endDate ? new Date(e.endDate + 'T00:00:00') : null })));
+      }
+      
+      setToast(`${events.length} events saved to shared database!`);
+    } catch (err) {
+      setToast('Failed to save events to database.');
+    }
   };
+
+  const handleClearPaylocity = async () => {
+    if (LOCAL_MODE) {
+      setUserEvents(prev=>prev.filter(ev=>!String(ev.id).includes('paylocity')));
+      setToast(`Paylocity records cleared (local)`);
+      return;
+    }
+    try {
+      const headers = { Authorization: `Bearer ${authToken}` };
+      const r = await fetch(`${API_URL}/api/events`, { headers });
+      const current = await r.json();
+      
+      if (Array.isArray(current)) {
+        const toDelete = current.filter(ev => String(ev.id).includes('paylocity'));
+        for (const ev of toDelete) {
+          await fetch(`${API_URL}/api/events/${ev.id}`, { method: 'DELETE', headers });
+        }
+      }
+      
+      const r2 = await fetch(`${API_URL}/api/events`, { headers });
+      const finalData = await r2.json();
+      if (Array.isArray(finalData)) {
+        setUserEventsRaw(finalData.map(e => ({ ...e, date: new Date(e.date + 'T00:00:00'), endDate: e.endDate ? new Date(e.endDate + 'T00:00:00') : null })));
+      }
+      setToast('Paylocity records removed from shared database.');
+    } catch (err) {
+      setToast('Failed to clear records from server.');
+    }
+  };
+
   const handleSaveEmployees=(emps)=>{ saveEmployees(emps); setEmployeesVer(v=>v+1); setEmpModal(false); setToast('Directory saved'); };
 
   // Feature 13+16: Pin toggle
@@ -2391,6 +3076,7 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
         viewDate={viewDate} setViewDate={setViewDate} allEvents={allEvents}
         activeCats={activeCats} setActiveCats={setActiveCats}
         search={search} setSearch={setSearch}
+        prefs={prefs} setPrefs={setPrefs}
         onNewEvent={()=>setModal({mode:'new',date:viewDate})}
         onOpenEvent={(ev)=>setModal({mode:'edit',event:ev})}
         weekStart={prefs.weekStart}
@@ -2404,6 +3090,13 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
       />
       <Resizer width={prefs.sidebarWidth||300} onChange={w=>setPrefs(p=>({...p,sidebarWidth:w}))}/>
       <div className="main">
+        {/* Server offline banner */}
+        {!LOCAL_MODE&&!serverOnline&&(
+          <div style={{background:'#FFF3CD',borderBottom:'1px solid #FFC107',padding:'7px 16px',display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#856404',flexShrink:0,zIndex:10}}>
+            <span>⚠️</span>
+            <span><strong>Server offline</strong> — changes may not save. Check that the Node.js server is running on port 3001.</span>
+          </div>
+        )}
         {/* Feature 4: Jump-to-date topbar */}
         <div className="topbar" style={{position:'relative'}}>
           <div className="month-title" style={{cursor:'pointer',userSelect:'none'}} onClick={()=>setJumpOpen(j=>!j)} title="Click to jump to date">
@@ -2425,7 +3118,7 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
           <div className="view-switcher">
             <button className={viewMode==='month'?'active':''} onClick={()=>setViewMode('month')} title="Month (M)">Month</button>
             <button className={viewMode==='week'?'active':''} onClick={()=>setViewMode('week')} title="Week (W)">Week</button>
-            <button className={viewMode==='day'?'active':''} onClick={()=>setViewMode('day')} title="Day (D)">Day</button>
+            <button className={viewMode==='day'?'active':''} onClick={()=>{ setViewMode('day'); setViewDate(new Date()); }} title="Day (D)">Day</button>
           </div>
           <button className="today-btn" onClick={()=>setViewDate(new Date())}>Today</button>
           <div className="nav-btns">
@@ -2435,6 +3128,10 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
           {/* Feature 5: Keyboard shortcuts button */}
           <button className="iconbtn" onClick={()=>setShortcutsOpen(true)} title="Keyboard shortcuts (?)">?</button>
           <button className="iconbtn" onClick={()=>setTweaksOpen(t=>!t)} title="Settings">{Icon.settings}</button>
+          <button className="iconbtn ss-topbar-btn" onClick={()=>setSsOpen(true)} title="Smartsheet Sync">
+            {Icon.smartsheet}
+            {ssEvents.length > 0 && <span className="ss-topbar-badge">{ssEvents.length}</span>}
+          </button>
           {authUser && (
             <div className="user-badge" ref={userMenuRef}>
               <div style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',padding:'4px 6px',borderRadius:8,transition:'background .15s'}} onClick={()=>setUserMenuOpen(o=>!o)}>
@@ -2449,17 +3146,13 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
                 {authUser.role === 'admin' && (
                   <button onClick={()=>{ setAdminOpen(true); setUserMenuOpen(false); }}>Admin Panel</button>
                 )}
-                <button onClick={()=>{ setSsOpen(true); setUserMenuOpen(false); }}>
-                  <span style={{marginRight:6}}>📊</span>Smartsheet Sync
-                  {ssEvents.length > 0 && <span style={{marginLeft:'auto',fontSize:10,background:'rgba(0,120,212,0.15)',color:'#0066CC',borderRadius:10,padding:'1px 7px',fontWeight:600}}>{ssEvents.length}</span>}
-                </button>
-                <button onClick={()=>{ onSignOut(); setUserMenuOpen(false); }}>Sign Out</button>
+<button onClick={()=>{ onSignOut(); setUserMenuOpen(false); }}>Sign Out</button>
               </div>
             </div>
           )}
         </div>
         {/* Feature 10: Month Summary Bar */}
-        {viewMode==='month'&&<MonthSummaryBar viewDate={viewDate} allEvents={allEvents} activeCats={activeCats}/>}
+        {viewMode==='month'&&<MonthSummaryBar viewDate={viewDate} allEvents={allEvents} activeCats={activeCats} setActiveCats={setActiveCats}/>}
         <div className="grid-wrap">
           {viewMode==='month'&&(
             <MonthGrid
@@ -2511,7 +3204,7 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
       {modal&&<EventModal mode={modal.mode} event={modal.event} date={modal.date} allEvents={allEvents} onClose={()=>setModal(null)} onSave={handleSave} onDelete={handleDelete} timezone={tz}/>}
       {dayModal&&<DayModal date={dayModal.date} events={dayModal.events} onClose={()=>setDayModal(null)} onOpenEvent={(ev)=>setModal({mode:'edit',event:ev})} onNewOnDate={(d)=>setModal({mode:'new',date:d})}/>}
       {empModal&&<EmployeeModal employees={loadEmployees()||window.SDC_DATA.DEFAULT_EMPLOYEES} onSave={handleSaveEmployees} onClose={()=>setEmpModal(false)}/>}
-      {importExportModal&&<ImportExportModal allEvents={allEvents} userEvents={userEvents} onImport={handleImport} onClose={()=>setImportExportModal(false)}/>}
+      {importExportModal&&<ImportExportModal allEvents={allEvents} userEvents={userEvents} onImport={handleImport} onClearPaylocity={handleClearPaylocity} onClose={()=>setImportExportModal(false)}/>}
       <TweaksPanel open={tweaksOpen} onClose={()=>setTweaksOpen(false)} prefs={prefs} setPrefs={setPrefs}/>
       {adminOpen && <AdminPanel authToken={authToken} onClose={()=>setAdminOpen(false)}/>}
       {ssOpen && <SmartsheetPanel onClose={()=>setSsOpen(false)} onSync={setSsEvents} currentEvents={ssEvents}/>}
@@ -2523,11 +3216,12 @@ function CalendarApp({ authToken, authUser, allowedCats, onSignOut }) {
       {/* Feature 16: Context Menu */}
       {contextMenu&&<ContextMenu x={contextMenu.x} y={contextMenu.y} event={contextMenu.event}
         onEdit={()=>{ setModal({mode:'edit',event:contextMenu.event}); setContextMenu(null); }}
-        onDelete={()=>{ handleDelete(contextMenu.event.id); setContextMenu(null); }}
+        onDelete={()=>{ setDeleteConfirm({id:contextMenu.event.id,title:contextMenu.event.title}); setContextMenu(null); }}
         onPin={()=>{ handleTogglePin(contextMenu.event); setContextMenu(null); }}
         onClose={()=>setContextMenu(null)}/>}
+      {deleteConfirm&&<DeleteConfirmModal title={deleteConfirm.title} onConfirm={()=>{ handleDelete(deleteConfirm.id); setDeleteConfirm(null); }} onCancel={()=>setDeleteConfirm(null)}/>}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App/></ErrorBoundary>);

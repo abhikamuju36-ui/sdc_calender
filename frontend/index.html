@@ -9,11 +9,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
+  <link rel="icon" href="icons/sdc-calendar-icon-C.ico" type="image/x-icon" />
   <link rel="stylesheet" href="styles.css?v=13" />
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div id="pre-loader" style="position:fixed;inset:0;background:#0A1628;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999">
@@ -26,27 +28,6 @@
   </div>
   <div id="root"></div>
 
-  <!-- Non-fatal error banner — shows at bottom, auto-hides after 6s, never blocks the app -->
-  <div id="err-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e1e2e;color:#ff8080;font-family:monospace;font-size:12px;padding:10px 18px;border-radius:8px;border:1px solid #ff4444;z-index:9999;max-width:600px;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:flex-start;gap:10px;">
-    <span style="flex:1;white-space:pre-wrap;word-break:break-word" id="err-msg"></span>
-    <button onclick="this.parentElement.style.display='none'" style="background:none;border:none;color:#ff8080;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">✕</button>
-  </div>
-
-  <script>
-    var _errTimer;
-    window.onerror = function(msg, src, line, col, err) {
-      // Skip noise errors that don't affect the user
-      var skip = ['ResizeObserver', 'Script error', 'getBoundingClientRect'];
-      if (skip.some(function(s){ return String(msg).indexOf(s) > -1; })) return;
-      var banner = document.getElementById('err-banner');
-      var msgEl  = document.getElementById('err-msg');
-      if (!banner || !msgEl) return;
-      msgEl.textContent = '⚠ ' + msg + (line ? '  (line ' + line + ')' : '');
-      banner.style.display = 'flex';
-      clearTimeout(_errTimer);
-      _errTimer = setTimeout(function(){ banner.style.display = 'none'; }, 6000);
-    };
-  </script>
 
   <script src="data.js?v=13"></script>
   <script type="text/babel" data-presets="react" src="app.jsx?v=13"></script>

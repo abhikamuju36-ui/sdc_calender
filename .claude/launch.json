@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "SDC Calendar",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8788", "--directory", "C:/Projects/SDC Centrailzed calender"],
+      "port": 8788
+    }
+  ]
+}

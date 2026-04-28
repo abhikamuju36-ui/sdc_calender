@@ -1,16 +1,19 @@
 // ── SDC Calendar — Electron main process ─────────────────────
 const { app, BrowserWindow, ipcMain, safeStorage, shell } = require('electron');
 const { spawn } = require('child_process');
-const path  = require('path');
-const fs    = require('fs');
-const http  = require('http');
+const path = require('path');
+const fs = require('fs');
+const http = require('http');
 
-const API_PORT   = process.env.PORT || 3001;
-const API_URL    = `http://localhost:${API_PORT}`;
+const API_PORT = process.env.PORT || 3001;
+const API_URL = `http://localhost:${API_PORT}`;
+// Provide your hosted Express Web Server URL here to enable Thin Client Mode
+const CENTRAL_SERVER_URL = process.env.CENTRAL_SERVER_URL || ''; 
+
 const TOKEN_FILE = () => path.join(app.getPath('userData'), 'ss_token.enc');
 
 let serverProcess = null;
-let mainWindow    = null;
+let mainWindow = null;
 
 // ── Spawn the Express backend ─────────────────────────────────
 // Check if the server is already running on the target port
@@ -24,6 +27,12 @@ function isPortInUse() {
 
 function startServer() {
   return new Promise(async (resolve) => {
+    // Skip local backend initialization if connecting to external hub
+    if (CENTRAL_SERVER_URL) {
+      console.log('[main] Connecting to central deployment: ' + CENTRAL_SERVER_URL);
+      return resolve();
+    }
+
     // If something is already listening on port 3001, use it as-is
     const alreadyRunning = await isPortInUse();
     if (alreadyRunning) {
@@ -32,12 +41,12 @@ function startServer() {
     }
 
     const serverScript = path.join(__dirname, '..', 'server', 'server.js');
-    const serverDir    = path.join(__dirname, '..', 'server');
+    const serverDir = path.join(__dirname, '..', 'server');
 
     serverProcess = spawn('node', [serverScript], {
-      cwd:   serverDir,
+      cwd: serverDir,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env:   { ...process.env },
+      env: { ...process.env },
     });
 
     serverProcess.stdout.on('data', d => process.stdout.write('[server] ' + d));
@@ -72,24 +81,24 @@ function startServer() {
 // ── Create the browser window ─────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width:     1440,
-    height:    920,
-    minWidth:  1024,
+    width: 1440,
+    height: 920,
+    minWidth: 1024,
     minHeight: 640,
     webPreferences: {
-      preload:          path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration:  false,
-      webSecurity:      true,
+      nodeIntegration: false,
+      webSecurity: true,
     },
-    title:           'SDC Centralized Calendar',
-    icon:            path.join(__dirname, '..', 'sdc-calendar-icons-1024', 'sdc-calendar-icon-C-1024.png'),
+    title: 'SDC Centralized Calendar',
+    icon: path.join(__dirname, '..', 'frontend', 'icons', 'sdc-calendar-icon-C.ico'),
     backgroundColor: '#ffffff',
-    show:            false, // reveal only when ready — avoids white flash
+    show: false, // reveal only when ready — avoids white flash
   });
 
-  // Server serves the calendar HTML at the root
-  mainWindow.loadURL(API_URL);
+  // Serve calendar UI from central hub or local fallback daemon
+  mainWindow.loadURL(CENTRAL_SERVER_URL || API_URL);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();

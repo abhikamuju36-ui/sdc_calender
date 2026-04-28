@@ -1,0 +1,30 @@
+{"level":"info","message":"API Server listening on port 3001","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:11"}
+{"level":"info","message":"SSO Callback route configured at: http://localhost:3001/auth/login","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:11"}
+{"level":"info","message":"Web Frontend Server listening on port 3000","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:11"}
+{"level":"info","message":"SDC Calendar initialized successfully — client access mapped","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:11"}
+{"level":"info","message":"GET /api/health 200 - 5ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:11"}
+{"level":"info","message":"GET / 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:12"}
+{"level":"info","message":"GET /styles.css?v=13 304 - 0ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:12"}
+{"level":"info","message":"GET /assets/sdc-logo.png 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:12"}
+{"level":"info","message":"GET /data.js?v=13 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:12"}
+{"level":"info","message":"GET /app.jsx?v=13 304 - 0ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:12"}
+{"level":"info","message":"GET /auth/login 302 - 4ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:13"}
+{"level":"info","message":"GET /auth/callback?code=1.ASkAReeo43Sw30iSCJKMfebcxh2OzGjxOhVOvv7eAxNpc9cAAAApAA.BQABBAIAAAADAOz_BQD0_0V2b1N0c0FydGlmYWN0cwIAAAAAAAe-PyMuXEGOPvsUVr0IcUXwVHfaEkZzPe9I7135M906mQab-vQYqlyS_5p8uTMblNPaeUX629zSwRpzpCAc9i-EmLSkxnHKWfIjxSTx3gHT_y5hVpWUkFib-HdNVewr-nDSmORPzrnFRTViTrsAlhyxvZ4hC_PWYwdBpiG8a3ZcYQQjFYNtObRU2E5z1-tEjxj33b1vDJ-XVD22n6dgveO_CBHQkGJfiR9CsqurcjKD-djKeHHYGwK-g5Pp7JHqf2Y04HWDlwksV8kZyxyKemWGSADX4ZegIK8IG2sUeaS1_2UQna2B469zkBaJh6jjtdy4L2Db_aU5WW3D-STE1Ok_P-Q6v65LWtaSMoWcslCObdJl7C4-X87iyprEitJsKDt72g1Cx2sT29V1utJ5vASQStKWQcRMHNcCvBUG2zzUA_K4XzabiL5Q27jo7MdV8SbDUl-bQWstqertC1ku-o35vefOeUhwpdgGj7Xbjlzb8OfO47mXQphucPn9vaje9okqlPCzn73NNXrxjtHlpu5KKfpmuEu4PPPw6HrIBmkCRNvqZoTC_M_P3aIWqBkRxzU9NpY3_5M7FG9Z3p5Hfz5KqHraBIOZW-jrhlAddcAU__zhYDHWwOaWqRF5wHeaNeCZf3JExjDXDAjweOPcfejEldHGMfLAHGRSK4_NXwKOPMSd9NaE6xYIDd9rACB9VN-didioU-xTaVjXJXIpvzfld4-7gQbZno_NhHySrDnf4bTC9zSvmfZQol-M6_0Yq0CXq4Sn3_iO-AlFkT4B8mjEcdMPYrqjhNlFrw_J2wruNJPBgN-1reG2UeL4EO2nM_dadq5bs3QvdSht3L5ZnZgW-Hk3RI8Uq0hWDpuWVZOUo-QJ9OXbPomqkLIx_lAKKEutLvkv0oC62gxFmvkKTb4ncLUdq6cYHEUFirdZRjNyd8sHPlovgiYtMehMW92mR-OGiEeN2eJ-zC6sSdzeWBhKBf8m5O-fBbomrwm2fgKote-jcp6CTfkiR3lwYhy1i4Vy6VbkDKL9n5IQT9pxiW4H0LuvkmGGQkYIFg2F4l5Z_xgCXfzR-ix5nbmhz9UPsi_ylN5hy-8OdEGyCXHPuB58RTjMPDcSnouzpOJbLoxq-hYhJKoUvXCZRdNKTyLeqg3WXjf-HhsKgmdRyb5a1_79Vu-yCDBJ8BIwUUMuYCd9b1Q1Idgjq0FFus28hNYDGECb5_JyrDj_LucCq7xvU81bml1trLxVuziSDi10g4CocP_wqHJmsSjmr-bm4r5LybxpFrw-ZQCnzjibIw&client_info=eyJ1aWQiOiIxZThkZDg1My0zYTA5LTQ2MzQtODA3MC1kOGM5MGE0NThkNTQiLCJ1dGlkIjoiZTNhOGU3NDUtYjA3NC00OGRmLTkyMDgtOTI4YzdkZTZkY2M2In0&session_state=00412f9a-700f-406d-f945-ab4724d3eb9e 302 - 319ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:14"}
+{"level":"info","message":"GET /SDC%20Centralized%20Calendar 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:14"}
+{"level":"info","message":"GET /styles.css?v=13 304 - 0ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:14"}
+{"level":"info","message":"GET /assets/sdc-logo.png 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:14"}
+{"level":"info","message":"GET /data.js?v=13 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:14"}
+{"level":"info","message":"GET /app.jsx?v=13 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:14"}
+{"level":"info","message":"GET /auth/me 304 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:15"}
+{"level":"info","message":"GET /assets/smartsheet-button-1024.png 304 - 0ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:15"}
+{"level":"info","message":"GET /api/events 304 - 2ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:15"}
+{"level":"info","message":"GET /api/health 200 - 1ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:15"}
+{"level":"info","message":"POST /api/smartsheet/verify-token 200 - 331ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:31"}
+{"level":"info","message":"GET /api/smartsheet/status 304 - 105ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:31"}
+{"level":"info","message":"GET /api/smartsheet/sheets 304 - 422ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:32"}
+{"level":"info","message":"POST /api/smartsheet/verify-token 200 - 125ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:34"}
+{"level":"info","message":"GET /api/smartsheet/status 304 - 121ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:34"}
+{"level":"info","message":"GET /api/smartsheet/sheets 304 - 132ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:34"}
+{"level":"info","message":"POST /api/smartsheet/verify-token 200 - 114ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:36"}
+{"level":"info","message":"GET /api/smartsheet/sheets 304 - 131ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:36"}
+{"level":"info","message":"GET /api/smartsheet/status 304 - 226ms [IP: 127.0.0.1]","service":"sdc-calendar-backend","timestamp":"2026-04-28 10:34:36"}

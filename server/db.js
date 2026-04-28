@@ -10,10 +10,10 @@ rolesDB.ensureIndex({ fieldName: 'role', unique: true });
 
 // Default role permissions — insert if not exist
 const defaultRoles = [
-  { role: 'admin',    categories: ['holiday','payday','birthday','meeting','company','deadline','personal'], label: 'Administrator' },
-  { role: 'hr',       categories: ['holiday','payday','birthday','company'],                                 label: 'HR' },
-  { role: 'manager',  categories: ['holiday','meeting','company','deadline','payday'],                       label: 'Manager' },
-  { role: 'employee', categories: ['holiday','company'],                                                     label: 'Employee' },
+  { role: 'admin',    categories: ['holiday','payday','birthday','meeting','company','deadline','personal','vacation'], label: 'Administrator' },
+  { role: 'hr',       categories: ['holiday','payday','birthday','company','vacation'],                                 label: 'HR' },
+  { role: 'manager',  categories: ['holiday','meeting','company','deadline','payday','vacation'],                       label: 'Manager' },
+  { role: 'employee', categories: ['holiday','company','vacation'],                                                     label: 'Employee' },
 ];
 
 defaultRoles.forEach(r => {

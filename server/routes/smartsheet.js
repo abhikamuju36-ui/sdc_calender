@@ -192,6 +192,12 @@ router.post('/sync', async (req, res) => {
 
         if (!title && !startRaw) continue;
 
+        // Filter: only allow FAT dates and Customer Visits
+        const lowerTitle = String(title || '');
+        const isFat      = /\bfat\b/i.test(lowerTitle);
+        const isVisit    = /\b(customer|client)\s+visits?\b/i.test(lowerTitle);
+        if (!isFat && !isVisit) continue;
+
         const startDate = normDate(startRaw);
         if (!startDate) continue;
 

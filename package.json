@@ -5,9 +5,14 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "dev":   "electron . --enable-logging"
+    "dev": "electron . --enable-logging"
   },
   "devDependencies": {
     "electron": "^29.0.0"
+  },
+  "dependencies": {
+    "nodemailer": "^8.0.7",
+    "sqlite3": "^6.0.1",
+    "xlsx": "^0.18.5"
   }
 }
