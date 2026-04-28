@@ -105,9 +105,6 @@ function createWindow() {
   // Serve calendar UI from central hub or local fallback daemon
   mainWindow.loadURL(CENTRAL_SERVER_URL || API_URL);
 
-  // Open developer tools in packaged mode to identify blank screen issues
-  mainWindow.webContents.openDevTools();
-
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
