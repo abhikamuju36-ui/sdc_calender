@@ -43,10 +43,15 @@ function startServer() {
     const serverScript = path.join(__dirname, '..', 'server', 'server.js');
     const serverDir = path.join(__dirname, '..', 'server');
 
-    serverProcess = spawn('node', [serverScript], {
+    const nodePath = app.isPackaged ? process.execPath : 'node';
+    const spawnEnv = app.isPackaged 
+      ? { ...process.env, ELECTRON_RUN_AS_NODE: '1' } 
+      : { ...process.env };
+
+    serverProcess = spawn(nodePath, [serverScript], {
       cwd: serverDir,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env },
+      env: spawnEnv,
     });
 
     serverProcess.stdout.on('data', d => process.stdout.write('[server] ' + d));
