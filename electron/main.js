@@ -14,6 +14,21 @@ const TOKEN_FILE = () => path.join(app.getPath('userData'), 'ss_token.enc');
 
 let serverProcess = null;
 let mainWindow = null;
+let targetURL = API_URL;
+
+function isRemoteAvailable(url) {
+  return new Promise((resolve) => {
+    const client = url.startsWith('https') ? require('https') : require('http');
+    const req = client.get(url, { timeout: 1500 }, (res) => {
+      resolve(res.statusCode >= 200 && res.statusCode < 400);
+    });
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
 
 // ── Spawn the Express backend ─────────────────────────────────
 // Check if the server is already running on the target port
@@ -27,10 +42,16 @@ function isPortInUse() {
 
 function startServer() {
   return new Promise(async (resolve) => {
-    // Skip local backend initialization if connecting to external hub
     if (CENTRAL_SERVER_URL) {
-      console.log('[main] Connecting to central deployment: ' + CENTRAL_SERVER_URL);
-      return resolve();
+      console.log('[main] Probing central deployment: ' + CENTRAL_SERVER_URL);
+      const centralOnline = await isRemoteAvailable(CENTRAL_SERVER_URL);
+      if (centralOnline) {
+        console.log('[main] Central deployment is ONLINE — bridging connections.');
+        targetURL = CENTRAL_SERVER_URL;
+        return resolve();
+      } else {
+        console.warn('[main] Central deployment is OFFLINE — falling back to offline capabilities.');
+      }
     }
 
     // If something is already listening on port 3001, use it as-is
@@ -98,7 +119,7 @@ function createWindow() {
   });
 
   // Serve calendar UI from central hub or local fallback daemon
-  mainWindow.loadURL(CENTRAL_SERVER_URL || API_URL);
+  mainWindow.loadURL(targetURL);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();

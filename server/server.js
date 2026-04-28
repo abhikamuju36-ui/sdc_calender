@@ -16,7 +16,7 @@ const NotificationService = require('./notificationService');
 NotificationService.start();
 
 const app      = express();
-const API_PORT = process.env.PORT        || 3002;
+const API_PORT = process.env.PORT        || 3001;
 const WEB_PORT = process.env.WEB_PORT    || 3000;
 const STATIC_DIR = path.join(__dirname, '..', 'frontend');
 
