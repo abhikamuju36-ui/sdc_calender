@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 server/node_modules/
+dist/
 
 # Environment — contains secrets, NEVER commit
 server/.env
